@@ -1,0 +1,17 @@
+{
+	"expo": {
+		"scheme": "rackd",
+		"userInterfaceStyle": "automatic",
+		"orientation": "default",
+		"web": {
+			"bundler": "metro"
+		},
+		"name": "rackd",
+		"slug": "rackd",
+		"plugins": ["expo-font"],
+		"experiments": {
+			"typedRoutes": true,
+			"reactCompiler": true
+		}
+	}
+}

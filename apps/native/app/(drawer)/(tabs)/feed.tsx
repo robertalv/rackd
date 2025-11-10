@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FeedHeader } from "@/components/feed-header";
 import { PostCard } from "@/components/post-card";
 import { opacity, withOpacity } from "@/lib/opacity";
+import { useRouter } from "expo-router";
 
 export default function FeedScreen() {
 	const [refreshing, setRefreshing] = useState(false);
@@ -18,6 +19,7 @@ export default function FeedScreen() {
     const themeColorAccent = useThemeColor("accent") || "#007AFF";
 	const scrollViewRef = useRef<ScrollView>(null);
 	const insets = useSafeAreaInsets();
+	const router = useRouter();
 
 	const posts = useQuery(api.posts.getFeed, { limit: 50 });
 
@@ -27,8 +29,10 @@ export default function FeedScreen() {
 	};
 
 	const handleSearch = () => {
-		// TODO: Navigate to search
-		console.log("Search");
+		// Navigate to discover page
+		router.push({
+			pathname: "/(drawer)/(tabs)/discover" as any,
+		});
 	};
 
 	const onRefresh = async () => {
@@ -86,7 +90,10 @@ export default function FeedScreen() {
 			style={{ backgroundColor: themeColorBackground }}
 			edges={["top"]}
 		>
-			<FeedHeader onSearch={handleSearch} onCreatePost={handleCreatePost} />
+			<FeedHeader 
+				onSearch={handleSearch} 
+				onCreatePost={handleCreatePost}
+			/>
 
 			<ScrollView
 				ref={scrollViewRef}

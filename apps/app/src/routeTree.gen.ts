@@ -17,6 +17,7 @@ import { Route as UnauthenticatedSignupRouteImport } from './routes/_unauthentic
 import { Route as UnauthenticatedResetPasswordRouteImport } from './routes/_unauthenticated/reset-password'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 import { Route as UnauthenticatedForgotPasswordRouteImport } from './routes/_unauthenticated/forgot-password'
+import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedFeedIndexRouteImport } from './routes/_authenticated/feed/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -61,6 +62,11 @@ const UnauthenticatedForgotPasswordRoute =
     path: '/forgot-password',
     getParentRoute: () => UnauthenticatedRoute,
   } as any)
+const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedFeedIndexRoute = AuthenticatedFeedIndexRouteImport.update({
   id: '/feed/',
   path: '/feed/',
@@ -73,6 +79,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/discover': typeof AuthenticatedDiscoverRoute
   '/forgot-password': typeof UnauthenticatedForgotPasswordRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/reset-password': typeof UnauthenticatedResetPasswordRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof AuthenticatedFeedIndexRoute
 }
 export interface FileRoutesByTo {
+  '/discover': typeof AuthenticatedDiscoverRoute
   '/forgot-password': typeof UnauthenticatedForgotPasswordRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/reset-password': typeof UnauthenticatedResetPasswordRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteWithChildren
+  '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_unauthenticated/forgot-password': typeof UnauthenticatedForgotPasswordRoute
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/reset-password': typeof UnauthenticatedResetPasswordRoute
@@ -108,6 +117,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/discover'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/feed'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/discover'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
+    | '/_authenticated/discover'
     | '/_unauthenticated/forgot-password'
     | '/_unauthenticated/login'
     | '/_unauthenticated/reset-password'
@@ -204,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnauthenticatedForgotPasswordRouteImport
       parentRoute: typeof UnauthenticatedRoute
     }
+    '/_authenticated/discover': {
+      id: '/_authenticated/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/feed/': {
       id: '/_authenticated/feed/'
       path: '/feed'
@@ -222,11 +241,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedFeedIndexRoute: typeof AuthenticatedFeedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedFeedIndexRoute: AuthenticatedFeedIndexRoute,
 }

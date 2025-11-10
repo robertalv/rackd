@@ -127,8 +127,8 @@ export default function PostDetailScreen() {
 					>
 						<Ionicons name="arrow-back" size={24} color={themeColorForeground} />
 					</Pressable>
-					<Text className="text-2xl font-bold" style={{ color: themeColorForeground }}>
-						Post
+					<Text className="text-4xl font-bold tracking-tighter font-mono" style={{ color: themeColorForeground }}>
+						post
 					</Text>
 				</View>
 				<Pressable

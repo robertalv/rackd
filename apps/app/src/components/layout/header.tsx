@@ -205,9 +205,12 @@ export function Header() {
               <IconAlignJustified className="h-4 w-4 stroke-1" />
               Feed
             </Link>
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            <div
+              onClick={() => navigate({ to: "/discover" })}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
+            >
               <User className="h-4 w-4" />
-              Discover (Coming Soon)
+              Discover
             </div>
             <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
               <Trophy className="h-4 w-4" />

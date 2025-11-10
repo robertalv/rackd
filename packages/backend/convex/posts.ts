@@ -651,16 +651,19 @@ export const deletePost = mutation({
 
 // Get discover feed (public posts from all users)
 export const getDiscoverFeed = query({
-  args: { limit: v.optional(v.number()) },
+  args: { 
+    limit: v.optional(v.number()),
+    query: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const posts = await ctx.db
+    let posts = await ctx.db
       .query("posts")
       .filter(q => q.eq(q.field("isPublic"), true))
       .order("desc")
-      .take(args.limit || 50);
+      .take((args.limit || 50) * 2); // Take more to filter later
 
     // Populate with user data
-    return await Promise.all(
+    let postsWithUsers = await Promise.all(
       posts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
         
@@ -670,6 +673,19 @@ export const getDiscoverFeed = query({
         };
       })
     );
+
+    // Apply search query filter if provided
+    if (args.query && args.query.length > 0) {
+      const searchTerm = args.query.toLowerCase();
+      postsWithUsers = postsWithUsers.filter((post: any) => {
+        const contentMatch = post.content.toLowerCase().includes(searchTerm);
+        const userNameMatch = post.user?.name?.toLowerCase().includes(searchTerm);
+        const usernameMatch = post.user?.username?.toLowerCase().includes(searchTerm);
+        return contentMatch || userNameMatch || usernameMatch;
+      });
+    }
+
+    return postsWithUsers.slice(0, args.limit || 50);
   },
 });
 

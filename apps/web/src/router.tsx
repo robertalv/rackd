@@ -4,8 +4,7 @@ import { routerWithQueryClient } from "@tanstack/react-router-with-query";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { routeTree } from "./routeTree.gen";
-import Loader from "./components/loader";
-import "./index.css";
+import '@rackd/ui/globals.css';
 
 export function getRouter() {
 	const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!;
@@ -32,7 +31,7 @@ export function getRouter() {
 		createTanStackRouter({
 			routeTree,
 			defaultPreload: "intent",
-			defaultPendingComponent: () => <Loader />,
+			defaultPendingComponent: () => <span>Loading...</span>,
 			defaultNotFoundComponent: () => <div>Not Found</div>,
 			context: { queryClient, convexClient: convex, convexQueryClient },
 			Wrap: ({ children }) => (

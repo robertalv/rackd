@@ -1,4 +1,4 @@
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 
 import {
 	HeadContent,
@@ -8,11 +8,10 @@ import {
 	useRouteContext,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import Header from "../components/header";
-import appCss from "../index.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
 import type { ConvexReactClient } from "convex/react";
+import type { ReactNode } from "react";
 
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getCookie } from "@tanstack/react-start/server";
@@ -23,6 +22,8 @@ import {
 } from "@convex-dev/better-auth/react-start";
 import { authClient } from "@/lib/auth-client";
 import { createAuth } from "@rackd/backend/convex/auth";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import '@rackd/ui/globals.css';
 
 const fetchAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const { session } = await fetchSession(getRequest());
@@ -38,6 +39,8 @@ export interface RouterAppContext {
 	queryClient: QueryClient;
 	convexClient: ConvexReactClient;
 	convexQueryClient: ConvexQueryClient;
+	userId?: string;
+	token?: string;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
@@ -51,48 +54,64 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "My App",
+				title: "Rackd | Your AI-powered billiard partner",
 			},
 		],
 		links: [
 			{
-				rel: "stylesheet",
-				href: appCss,
+				rel: "stylesheet",	
+				href: '@rackd/ui/globals.css',
 			},
 		],
 	}),
 
-	component: RootDocument,
+	component: RootComponent,
+	notFoundComponent: () => <div>Not Found</div>,
 	beforeLoad: async (ctx) => {
-		const { userId, token } = await fetchAuth();
-		if (token) {
-			ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
+		try {
+			const { userId, token } = await fetchAuth();
+			if (token) {
+				ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
+			}
+			return { userId, token };
+		} catch (error) {
+			// If auth fetch fails, continue without auth
+			console.error('Auth fetch failed:', error);
+			return { userId: undefined, token: undefined };
 		}
-		return { userId, token };
 	},
 });
 
-function RootDocument() {
+function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
 	return (
-		<ConvexBetterAuthProvider
-			client={context.convexClient}
-			authClient={authClient}
-		>
-			<html lang="en" className="dark">
-				<head>
-					<HeadContent />
-				</head>
-				<body>
-					<div className="grid h-svh grid-rows-[auto_1fr]">
-						<Header />
+		<RootDocument>
+			<ThemeProvider defaultTheme="dark">
+				<ConvexBetterAuthProvider
+					client={context.convexClient}
+					authClient={authClient}
+				>
 						<Outlet />
-					</div>
-					<Toaster richColors />
-					<TanStackRouterDevtools position="bottom-left" />
-					<Scripts />
-				</body>
-			</html>
-		</ConvexBetterAuthProvider>
+						<Toaster richColors />
+				</ConvexBetterAuthProvider>
+			</ThemeProvider>
+		</RootDocument>
+	);
+}
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+	return (
+		<html lang="en" className="dark" suppressHydrationWarning>
+			<head>
+				<HeadContent />
+			</head>
+			<body className="font-sans antialiased">
+				<div className="grid h-svh grid-rows-[auto_1fr]">
+					{children}
+				</div>
+				<TanStackRouterDevtools position="bottom-left" />
+				<Scripts />
+			</body>
+		</html>
 	);
 }

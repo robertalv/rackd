@@ -8,6 +8,8 @@ import {
 	View,
 } from "react-native";
 import { Card, useThemeColor } from "heroui-native";
+import { useMutation } from "convex/react";
+import { api } from "@rackd/backend/convex/_generated/api";
 
 export function SignUp() {
 	const [name, setName] = useState("");
@@ -15,6 +17,7 @@ export function SignUp() {
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
 
 	const mutedColor = useThemeColor("muted");
 	const accentColor = useThemeColor("accent");
@@ -36,7 +39,14 @@ export function SignUp() {
 					setError(error.error?.message || "Failed to sign up");
 					setIsLoading(false);
 				},
-				onSuccess: () => {
+				onSuccess: async () => {
+					// Create player profile after successful signup
+					try {
+						await createPlayerProfile();
+					} catch (err) {
+						// Player profile creation is idempotent, so errors are non-critical
+						console.warn("Failed to create player profile:", err);
+					}
 					setName("");
 					setEmail("");
 					setPassword("");

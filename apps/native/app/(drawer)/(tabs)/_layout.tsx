@@ -20,25 +20,52 @@ export default function TabLayout() {
 				},
 				tabBarStyle: {
 					backgroundColor: themeColorBackground,
+					borderTopColor: themeColorForeground + "20",
 				},
+				tabBarActiveTintColor: themeColorForeground,
+				tabBarInactiveTintColor: themeColorForeground + "80",
 			}}
 		>
 			<Tabs.Screen
-				name="index"
+				name="feed"
 				options={{
-					title: "Home",
+					title: "Feed",
 					tabBarIcon: ({ color, size }: { color: string; size: number }) => (
 						<Ionicons name="home" size={size} color={color} />
 					),
 				}}
 			/>
 			<Tabs.Screen
-				name="two"
+				name="tournaments"
 				options={{
-					title: "Explore",
+					title: "Tournaments",
 					tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-						<Ionicons name="compass" size={size} color={color} />
+						<Ionicons name="trophy" size={size} color={color} />
 					),
+				}}
+			/>
+			<Tabs.Screen
+				name="matches"
+				options={{
+					title: "Matches",
+					tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+						<Ionicons name="basketball" size={size} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="profile"
+				options={{
+					title: "Profile",
+					tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+						<Ionicons name="person" size={size} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="post/[postId]"
+				options={{
+					href: null, // Hide from tab bar
 				}}
 			/>
 		</Tabs>

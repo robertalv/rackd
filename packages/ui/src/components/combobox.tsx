@@ -1,0 +1,2 @@
+export { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger, ComboboxCreateNew } from "./kibo-ui/combobox";
+export type { ComboboxProps, ComboboxContentProps, ComboboxInputProps, ComboboxItemProps, ComboboxListProps, ComboboxTriggerProps, ComboboxCreateNewProps } from "./kibo-ui/combobox";

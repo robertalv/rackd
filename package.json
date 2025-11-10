@@ -19,5 +19,13 @@
   "devDependencies": {
     "turbo": "^2.5.4"
   },
-  "packageManager": "pnpm@10.13.1"
+  "packageManager": "pnpm@10.13.1",
+  "pnpm": {
+    "overrides": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0",
+      "react-native-renderer": "19.1.0",
+      "@types/react-dom": "~19.1.7"
+    }
+  }
 }

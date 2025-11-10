@@ -38,21 +38,10 @@ function DrawerLayout() {
 			<Drawer.Screen
 				name="(tabs)"
 				options={{
-					headerTitle: "Tabs",
-					drawerLabel: "Tabs",
+					headerShown: false,
+					drawerLabel: "Social",
 					drawerIcon: ({ size, color }) => (
-						<MaterialIcons name="border-bottom" size={size} color={color} />
-					),
-					headerRight: () => (
-						<Link href="/modal" asChild>
-							<Pressable className="mr-4">
-								<Ionicons
-									name="add-outline"
-									size={24}
-									color={themeColorForeground}
-								/>
-							</Pressable>
-						</Link>
+						<Ionicons name="people-outline" size={size} color={color} />
 					),
 				}}
 			/>

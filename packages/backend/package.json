@@ -13,9 +13,14 @@
     "typescript": "catalog:"
   },
   "dependencies": {
-    "convex": "catalog:",
-    "better-auth": "catalog:",
+    "@better-auth/expo": "catalog:",
+    "@convex-dev/aggregate": "^0.1.25",
     "@convex-dev/better-auth": "catalog:",
-    "@better-auth/expo": "catalog:"
+    "@convex-dev/migrations": "^0.2.9",
+    "@convex-dev/resend": "^0.1.13",
+    "@convex-dev/sharded-counter": "^0.1.8",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "resend": "^6.4.2"
   }
 }

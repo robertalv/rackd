@@ -1,0 +1,12 @@
+{
+  "extends": "@rackd/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@rackd/ui/*": ["./src/*"]
+    },
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

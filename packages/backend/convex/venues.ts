@@ -286,16 +286,6 @@ export const remove = mutation({
     if (venue.images?.[0]) {
       try {
         await ctx.storage.delete(venue.images[0] as any);
-        
-        // Also clean up from files table
-        const file = await ctx.db
-          .query("files")
-          .withIndex("by_storage_id", (q) => q.eq("storageId", venue.images![0] as any))
-          .first();
-        
-        if (file) {
-          await ctx.db.delete(file._id);
-        }
       } catch (error) {
         // Log error but don't fail the venue deletion
         console.error("Failed to delete venue image:", error);

@@ -7,6 +7,7 @@ import { useThemeColor } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PostImage } from "@/components/post-image";
 import { CommentItem } from "@/components/comment-item";
+import { TournamentPostCard } from "@/components/tournament-post-card";
 import { opacity, withOpacity } from "@/lib/opacity";
 import { formatDistanceToNow } from "@/lib/date-utils";
 import { useRouter } from "expo-router";
@@ -20,6 +21,10 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, scrollViewRef, showCommentsInline = true, onCommentPress }: PostCardProps) {
+	// If this post has a tournament, use the special tournament post card
+	if (post.tournamentId && post.tournament) {
+		return <TournamentPostCard post={post} scrollViewRef={scrollViewRef} showCommentsInline={showCommentsInline} onCommentPress={onCommentPress} />;
+	}
 	const [showComments, setShowComments] = useState(false);
 	const [commentText, setCommentText] = useState("");
 	const [isSubmittingComment, setIsSubmittingComment] = useState(false);

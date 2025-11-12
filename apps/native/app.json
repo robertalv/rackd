@@ -8,7 +8,20 @@
 		},
 		"name": "rackd",
 		"slug": "rackd",
-		"plugins": ["expo-font"],
+		"splash": {
+			"image": "assets/images/splash-icon.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#000000"
+		},
+		"plugins": [
+			"expo-font",
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "The app accesses your photos to let you upload tournament flyers."
+				}
+			]
+		],
 		"experiments": {
 			"typedRoutes": true,
 			"reactCompiler": true

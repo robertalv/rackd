@@ -1,19 +1,23 @@
 "use client"
 
 import * as React from "react"
-import { useAction } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@rackd/backend/convex/_generated/api"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@rackd/ui/components/card"
 import { Button } from "@rackd/ui/components/button"
 import { Badge } from "@rackd/ui/components/badge"
+import { Input } from "@rackd/ui/components/input"
 import { 
   Chrome, 
   Apple,  
   Mail, 
   Link as LinkIcon,
   Unlink,
-  Loader2
+  Loader2,
+  Github,
+  Search,
+  Trophy
 } from "lucide-react"
 import {
   AlertDialog,
@@ -27,34 +31,43 @@ import {
   AlertDialogTrigger,
 } from "@rackd/ui/components/alert-dialog"
 
-interface ConnectedAccountsProps {
-  userId?: string
-}
-
-export function ConnectedAccounts({ userId }: ConnectedAccountsProps) {
-  const [authMethods, setAuthMethods] = React.useState<any[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-  const getAuthMethods = useAction(api.workos.getAuthenticationMethods)
-
+export function ConnectedAccounts() {
+  const authMethods = useQuery(api.accounts.getMyAccounts) ?? []
+  const fargoRateAccount = useQuery(api.accounts.getFargoRateAccount)
+  const disconnectAccount = useMutation(api.accounts.disconnectAccount)
+  const linkFargoRateAccount = useMutation(api.accounts.linkFargoRateAccount)
+  const unlinkFargoRateAccount = useMutation(api.accounts.unlinkFargoRateAccount)
+  const searchFargoRatePlayersAction = useAction(api.accounts.searchFargoRatePlayers)
+  
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [selectedPlayer, setSelectedPlayer] = React.useState<any>(null)
+  const [searchResults, setSearchResults] = React.useState<any[]>([])
+  const [isSearching, setIsSearching] = React.useState(false)
+  
+  // Handle search with debouncing
   React.useEffect(() => {
-    if (userId) {
-      loadAuthMethods()
+    if (searchQuery.length < 2) {
+      setSearchResults([])
+      return
     }
-  }, [userId])
-
-  const loadAuthMethods = async () => {
-    try {
-      setIsLoading(true)
-      const methods = await getAuthMethods({ userId: userId! })
-      console.log('🔍 Frontend - Received auth methods:', JSON.stringify(methods, null, 2))
-      setAuthMethods(methods || [])
-    } catch (error) {
-      console.error("Failed to load authentication methods:", error)
-      toast.error("Failed to load connected accounts")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const results = await searchFargoRatePlayersAction({ query: searchQuery })
+        setSearchResults(results || [])
+      } catch (error) {
+        console.error("Failed to search FargoRate players:", error)
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300) // Debounce by 300ms
+    
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, searchFargoRatePlayersAction])
+  
+  const isLoading = authMethods === undefined || fargoRateAccount === undefined
 
   const getProviderIcon = (method: any) => {
     const provider = getProviderName(method)
@@ -70,35 +83,8 @@ export function ConnectedAccounts({ userId }: ConnectedAccountsProps) {
   }
 
   const getProviderName = (method: any) => {
-    console.log('🔍 Frontend - getProviderName called with method:', JSON.stringify(method, null, 2))
-    
-    // Method object should have: { type, provider, method }
-    // Use the method field first (which is already formatted from backend)
-    if (method.method) {
-      console.log('✅ Using method.method:', method.method)
-      return method.method;
-    }
-    
-    // Fallback: try different field names that WorkOS might use
-    const provider = method.provider || method.Provider || method.type || method.Type || ""
-    
-    // Normalize provider names
-    const providerStr = String(provider).toLowerCase()
-    
-    if (providerStr.includes("google")) return "Google"
-    if (providerStr.includes("apple")) return "Apple"
-    if (providerStr.includes("github")) return "GitHub"
-    if (providerStr.includes("microsoft")) return "Microsoft"
-    if (providerStr.includes("facebook")) return "Facebook"
-    if (providerStr.includes("email") || providerStr.includes("password") || providerStr === "email_password") {
-      return "Email + Password"
-    }
-    
-    // Return formatted version of the provider name
-    return provider
-      .split(/[_-]/)
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ")
+    // Method object from backend has: { method, provider, type }
+    return method.method || method.provider || "Unknown"
   }
 
   const getProviderBadgeVariant = (method: any) => {
@@ -110,9 +96,44 @@ export function ConnectedAccounts({ userId }: ConnectedAccountsProps) {
   }
 
   const handleDisconnect = async (method: any) => {
-    // TODO: Implement account disconnection
-    // This would require WorkOS API to disconnect OAuth providers
-    toast.info("Account disconnection coming soon")
+    try {
+      await disconnectAccount({ accountId: method.id })
+      toast.success(`${getProviderName(method)} disconnected successfully`)
+    } catch (error: any) {
+      console.error("Failed to disconnect account:", error)
+      toast.error(error.message || "Failed to disconnect account")
+    }
+  }
+
+  const handleLinkFargoRate = async () => {
+    if (!selectedPlayer) return
+    
+    try {
+      await linkFargoRateAccount({
+        fargoId: selectedPlayer.id,
+        fargoReadableId: selectedPlayer.readableId,
+        name: selectedPlayer.name,
+        fargoRating: parseInt(selectedPlayer.effectiveRating) || parseInt(selectedPlayer.provisionalRating) || 0,
+        fargoRobustness: parseInt(selectedPlayer.robustness) || undefined,
+        city: selectedPlayer.location || undefined,
+      })
+      toast.success("FargoRate account linked successfully")
+      setSearchQuery("")
+      setSelectedPlayer(null)
+    } catch (error: any) {
+      console.error("Failed to link FargoRate account:", error)
+      toast.error(error.message || "Failed to link FargoRate account")
+    }
+  }
+
+  const handleUnlinkFargoRate = async () => {
+    try {
+      await unlinkFargoRateAccount({})
+      toast.success("FargoRate account unlinked successfully")
+    } catch (error: any) {
+      console.error("Failed to unlink FargoRate account:", error)
+      toast.error(error.message || "Failed to unlink FargoRate account")
+    }
   }
 
   if (isLoading) {
@@ -150,15 +171,8 @@ export function ConnectedAccounts({ userId }: ConnectedAccountsProps) {
   }
 
   // Group methods by type
-  const passwordMethods = authMethods.filter(m => {
-    const name = getProviderName(m).toLowerCase()
-    return name.includes("email") || name.includes("password")
-  })
-  
-  const oauthMethods = authMethods.filter(m => {
-    const name = getProviderName(m).toLowerCase()
-    return !name.includes("email") && !name.includes("password")
-  })
+  const passwordMethods = authMethods.filter(m => m.type === "password")
+  const oauthMethods = authMethods.filter(m => m.type === "oauth")
 
   return (
     <div className="space-y-6">
@@ -247,6 +261,137 @@ export function ConnectedAccounts({ userId }: ConnectedAccountsProps) {
           ))}
         </div>
       )}
+
+      {/* FargoRate Account Section */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground">FargoRate Account</h3>
+        
+        {fargoRateAccount ? (
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                    <Trophy className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{fargoRateAccount.name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {fargoRateAccount.fargoRating && (
+                        <span>Rating: {fargoRateAccount.fargoRating.toLocaleString()}</span>
+                      )}
+                      {fargoRateAccount.city && (
+                        <span>• {fargoRateAccount.city}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Connected</Badge>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Unlink className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Unlink FargoRate Account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove your FargoRate account link. You can link it again later.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleUnlinkFargoRate}>
+                          Unlink
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Link your FargoRate account</p>
+                  <p className="text-xs text-muted-foreground">
+                    Connect your FargoRate player profile to track your ratings and statistics
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search for your FargoRate profile..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  
+                  {searchQuery.length >= 2 && (
+                    <div className="max-h-60 overflow-y-auto rounded-md border">
+                      {isSearching ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                          Searching...
+                        </div>
+                      ) : searchResults.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          No players found
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {searchResults.map((player: any) => (
+                            <button
+                              key={player.id}
+                              onClick={() => setSelectedPlayer(player)}
+                              className={`w-full p-3 text-left hover:bg-muted ${
+                                selectedPlayer?.id === player.id ? "bg-muted" : ""
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium">{player.name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {player.location && <span>{player.location}</span>}
+                                    {player.effectiveRating && (
+                                      <span>• Rating: {parseInt(player.effectiveRating).toLocaleString()}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {selectedPlayer?.id === player.id && (
+                                  <Badge variant="default">Selected</Badge>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {selectedPlayer && (
+                    <Button
+                      onClick={handleLinkFargoRate}
+                      className="w-full"
+                      disabled={!selectedPlayer}
+                    >
+                      Link FargoRate Account
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

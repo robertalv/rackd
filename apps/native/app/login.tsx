@@ -17,6 +17,7 @@ import { Card, useThemeColor } from "heroui-native";
 import { authClient } from "@/lib/auth-client";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -106,27 +107,104 @@ export default function LoginPage() {
 		setIsLoading(true);
 		setErrors({});
 
-		await authClient.signIn.social(
-			{
-				provider,
-			},
-			{
-				onError: (error) => {
+		try {
+			// For Apple Sign In on native iOS, use ID token flow
+			if (provider === "apple" && Platform.OS === "ios") {
+				// Check if Apple Authentication is available
+				const isAvailable = await AppleAuthentication.isAvailableAsync();
+				
+				if (!isAvailable) {
 					setErrors({
-						root:
-							error.error?.message ||
-							"Failed to redirect to social login. Please try again.",
+						root: "Apple Sign In is not available on this device.",
 					});
 					setIsLoading(false);
-				},
-				onSuccess: () => {
-					// Social login redirects automatically
-				},
-				onFinished: () => {
+					return;
+				}
+
+				try {
+					// Request Apple ID token
+					const credential = await AppleAuthentication.signInAsync({
+						requestedScopes: [
+							AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+							AppleAuthentication.AppleAuthenticationScope.EMAIL,
+						],
+					});
+
+					if (!credential.identityToken) {
+						throw new Error("No identity token received from Apple");
+					}
+
+					// Sign in with Better Auth using the ID token
+					await authClient.signIn.social(
+						{
+							provider: "apple",
+							idToken: {
+								token: credential.identityToken,
+								accessToken: credential.authorizationCode || undefined,
+							},
+						},
+						{
+							onError: (error) => {
+								setErrors({
+									root:
+										error.error?.message ||
+										"Failed to sign in with Apple. Please try again.",
+								});
+								setIsLoading(false);
+							},
+							onSuccess: () => {
+								// Navigate to home on success
+								router.replace("/(drawer)");
+							},
+							onFinished: () => {
+								setIsLoading(false);
+							},
+						},
+					);
+				} catch (error: any) {
+					// Handle user cancellation
+					if (error.code === "ERR_REQUEST_CANCELED") {
+						setIsLoading(false);
+						return;
+					}
+					
+					setErrors({
+						root:
+							error?.message ||
+							"Failed to sign in with Apple. Please try again.",
+					});
 					setIsLoading(false);
-				},
-			},
-		);
+				}
+			} else {
+				// For Google or non-iOS platforms, use redirect flow
+				await authClient.signIn.social(
+					{
+						provider,
+					},
+					{
+						onError: (error) => {
+							setErrors({
+								root:
+									error.error?.message ||
+									"Failed to redirect to social login. Please try again.",
+							});
+							setIsLoading(false);
+						},
+						onSuccess: () => {
+							// Social login redirects automatically
+						},
+						onFinished: () => {
+							setIsLoading(false);
+						},
+					}
+				);
+			}
+		} catch (error: any) {
+			setErrors({
+				root: error?.message || "An unexpected error occurred. Please try again.",
+			});
+			setIsLoading(false);
+		}
 	};
 
 	// AuthGuard handles loading and redirects
@@ -141,18 +219,20 @@ export default function LoginPage() {
 				<View className="flex-1">
 					{/* Logo at top */}
 					<View
-						className="items-center pt-6"
+						className="items-center"
 						style={{ paddingTop: insets.top + 24 }}
 					>
 						<Image
-							source={require("@/assets/images/icon.png")}
+							source={require("../assets/images/icon.png")}
 							style={{
 								width: 80,
 								height: 80,
-								tintColor: iconColor,
 							}}
 							resizeMode="contain"
 						/>
+						<Text className="text-4xl font-bold tracking-tighter font-mono text-foreground">
+							rackd
+						</Text>
 					</View>
 
 					{/* Form in middle */}

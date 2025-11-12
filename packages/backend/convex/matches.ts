@@ -182,6 +182,95 @@ export const updateScore = mutation({
 
 // Generate bracket for tournament
 export const generateBracket = mutation({
+  args: { 
+    tournamentId: v.id("tournaments"),
+    preserveCompleted: v.optional(v.boolean()), // Option to preserve completed matches
+  },
+  handler: async (ctx, { tournamentId, preserveCompleted = false }) => {
+    // Get tournament info
+    const tournament = await ctx.db.get(tournamentId);
+    if (!tournament) {
+      throw new Error("Tournament not found");
+    }
+
+    // Get tournament registrations (checked-in players)
+    const registrations = await ctx.db
+      .query("tournamentRegistrations")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", tournamentId))
+      .filter((q) => q.eq(q.field("checkedIn"), true))
+      .collect();
+
+    if (registrations.length < 2) {
+      throw new Error("Need at least 2 checked-in players to generate bracket");
+    }
+
+    // Get existing matches
+    const existingMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", tournamentId))
+      .collect();
+
+    // If preserving completed matches, save them and their winners
+    const completedMatches = preserveCompleted 
+      ? existingMatches.filter(m => m.status === "completed" && m.winnerId)
+      : [];
+    
+    const completedWinners = new Set(
+      completedMatches.map(m => m.winnerId).filter((id): id is Id<"players"> => id !== undefined)
+    );
+
+    // Clear existing matches (or only non-completed ones if preserving)
+    if (preserveCompleted && completedMatches.length > 0) {
+      // Only delete non-completed matches
+      for (const match of existingMatches) {
+        if (match.status !== "completed") {
+          await ctx.db.delete(match._id);
+        }
+      }
+    } else {
+      // Clear all matches
+      for (const match of existingMatches) {
+        await ctx.db.delete(match._id);
+      }
+    }
+
+    // Convert registrations to player objects for bracket generation
+    const tournamentPlayers = registrations.map(reg => ({
+      playerId: reg.playerId,
+      seed: reg.seed,
+    }));
+
+    // Shuffle players for random bracket seeding (or use seeded if bracketOrdering is seeded_draw)
+    let shuffledPlayers = [...tournamentPlayers];
+    if (tournament.bracketOrdering === "seeded_draw") {
+      // Sort by seed if available, otherwise random
+      shuffledPlayers.sort((a, b) => {
+        if (a.seed !== null && b.seed !== null) {
+          return (a.seed || 0) - (b.seed || 0);
+        }
+        if (a.seed !== null) return -1;
+        if (b.seed !== null) return 1;
+        return Math.random() - 0.5;
+      });
+    } else {
+      shuffledPlayers.sort(() => Math.random() - 0.5);
+    }
+
+    // Generate bracket based on tournament type
+    if (tournament.type === "single") {
+      return await generateSingleElimination(ctx, tournamentId, shuffledPlayers, preserveCompleted ? completedMatches : []);
+    } else if (tournament.type === "double") {
+      return await generateDoubleElimination(ctx, tournamentId, shuffledPlayers, preserveCompleted ? completedMatches : []);
+    } else if (tournament.type === "round_robin") {
+      return await generateRoundRobin(ctx, tournamentId, shuffledPlayers, preserveCompleted ? completedMatches : []);
+    } else {
+      throw new Error("Unsupported tournament type");
+    }
+  },
+});
+
+// Regenerate bracket preserving completed matches and allowing late players
+export const regenerateBracket = mutation({
   args: { tournamentId: v.id("tournaments") },
   handler: async (ctx, { tournamentId }) => {
     // Get tournament info
@@ -190,38 +279,62 @@ export const generateBracket = mutation({
       throw new Error("Tournament not found");
     }
 
-    // Get tournament players
-    const tournamentPlayers = await ctx.db
-      .query("tournamentPlayers")
+    // Get tournament registrations (checked-in players)
+    const registrations = await ctx.db
+      .query("tournamentRegistrations")
       .withIndex("by_tournament", (q) => q.eq("tournamentId", tournamentId))
       .filter((q) => q.eq(q.field("checkedIn"), true))
       .collect();
 
-    if (tournamentPlayers.length < 2) {
-      throw new Error("Need at least 2 checked-in players to generate bracket");
+    if (registrations.length < 2) {
+      throw new Error("Need at least 2 checked-in players to regenerate bracket");
     }
 
-    // Clear existing matches
+    // Get existing matches
     const existingMatches = await ctx.db
       .query("matches")
       .withIndex("by_tournament", (q) => q.eq("tournamentId", tournamentId))
       .collect();
-    
+
+    // Preserve completed matches
+    const completedMatches = existingMatches.filter(m => m.status === "completed" && m.winnerId);
+
+    // Only delete non-completed matches
     for (const match of existingMatches) {
-      await ctx.db.delete(match._id);
+      if (match.status !== "completed") {
+        await ctx.db.delete(match._id);
+      }
     }
 
-    // Shuffle players for random bracket seeding
-    const shuffledPlayers = [...tournamentPlayers].sort(() => Math.random() - 0.5);
-    const numPlayers = shuffledPlayers.length;
+    // Convert registrations to player objects for bracket generation
+    const tournamentPlayers = registrations.map(reg => ({
+      playerId: reg.playerId,
+      seed: reg.seed,
+    }));
 
-    // Generate bracket based on tournament type
+    // Shuffle players for random bracket seeding (or use seeded if bracketOrdering is seeded_draw)
+    let shuffledPlayers = [...tournamentPlayers];
+    if (tournament.bracketOrdering === "seeded_draw") {
+      // Sort by seed if available, otherwise random
+      shuffledPlayers.sort((a, b) => {
+        if (a.seed !== null && b.seed !== null) {
+          return (a.seed || 0) - (b.seed || 0);
+        }
+        if (a.seed !== null) return -1;
+        if (b.seed !== null) return 1;
+        return Math.random() - 0.5;
+      });
+    } else {
+      shuffledPlayers.sort(() => Math.random() - 0.5);
+    }
+
+    // Generate bracket based on tournament type, preserving completed matches
     if (tournament.type === "single") {
-      return await generateSingleElimination(ctx, tournamentId, shuffledPlayers);
+      return await generateSingleElimination(ctx, tournamentId, shuffledPlayers, completedMatches);
     } else if (tournament.type === "double") {
-      return await generateDoubleElimination(ctx, tournamentId, shuffledPlayers);
+      return await generateDoubleElimination(ctx, tournamentId, shuffledPlayers, completedMatches);
     } else if (tournament.type === "round_robin") {
-      return await generateRoundRobin(ctx, tournamentId, shuffledPlayers);
+      return await generateRoundRobin(ctx, tournamentId, shuffledPlayers, completedMatches);
     } else {
       throw new Error("Unsupported tournament type");
     }
@@ -232,21 +345,50 @@ export const generateBracket = mutation({
 async function generateSingleElimination(
   ctx: any,
   tournamentId: Id<"tournaments">,
-  players: any[]
+  players: any[],
+  completedMatches: any[] = []
 ) {
   const numPlayers = players.length;
   const matches: any[] = [];
   
+  // Track players already placed in bracket from completed matches
+  const placedPlayers = new Set<Id<"players">>();
+  completedMatches.forEach(m => {
+    if (m.player1Id) placedPlayers.add(m.player1Id);
+    if (m.player2Id) placedPlayers.add(m.player2Id);
+    if (m.winnerId) placedPlayers.add(m.winnerId);
+  });
+  
+  // Add completed matches to matches array (they're already in DB, but we need them for linking)
+  completedMatches.forEach(m => matches.push(m));
+  
+  // Filter out players already in completed matches
+  const availablePlayers = players.filter(p => !placedPlayers.has(p.playerId));
+  
+  // Calculate total players (including those in completed matches)
+  const totalPlayers = numPlayers;
+  
   // Calculate the actual number of matches needed in the first round
-  const firstRoundMatches = Math.ceil(numPlayers / 2);
-  const numRounds = Math.ceil(Math.log2(numPlayers));
+  const firstRoundMatches = Math.ceil(totalPlayers / 2);
+  const numRounds = Math.ceil(Math.log2(totalPlayers));
+  
+  // If we have completed matches, we need to skip positions already taken
+  const completedPositions = new Set(completedMatches.map(m => `${m.round}-${m.bracketPosition}`));
   
   // Generate first round matches with actual players
+  let availablePlayerIndex = 0;
   for (let pos = 0; pos < firstRoundMatches; pos++) {
+    const positionKey = `1-${pos}`;
+    
+    // Skip if this position is already taken by a completed match
+    if (completedPositions.has(positionKey)) {
+      continue;
+    }
+    
     const playerIndex1 = pos * 2;
     const playerIndex2 = pos * 2 + 1;
     
-    // Get players for this match
+    // Get players for this match from available players
     const player1 = playerIndex1 < players.length ? players[playerIndex1] : null;
     const player2 = playerIndex2 < players.length ? players[playerIndex2] : null;
     
@@ -284,6 +426,13 @@ async function generateSingleElimination(
     const matchesInRound = Math.floor(currentRoundMatches / 2);
     
     for (let pos = 0; pos < matchesInRound; pos++) {
+      const positionKey = `${round}-${pos}`;
+      
+      // Skip if this position is already taken by a completed match
+      if (completedPositions.has(positionKey)) {
+        continue;
+      }
+      
       const match = {
         tournamentId,
         player1Id: undefined,
@@ -325,22 +474,41 @@ async function generateSingleElimination(
     }
   }
   
-  return { message: "Single elimination bracket generated", numRounds, numPlayers };
+  return { 
+    message: "Single elimination bracket generated", 
+    numRounds, 
+    numPlayers,
+    preservedMatches: completedMatches.length 
+  };
 }
 
 // Generate double elimination bracket
 async function generateDoubleElimination(
   ctx: any,
   tournamentId: Id<"tournaments">,
-  players: any[]
+  players: any[],
+  completedMatches: any[] = []
 ) {
   const numPlayers = players.length;
   const numWinnerRounds = Math.ceil(Math.log2(numPlayers));
   const matches: any[] = [];
   
+  // Add completed matches to matches array
+  completedMatches.forEach(m => matches.push(m));
+  
+  // Track positions already taken by completed matches
+  const completedPositions = new Set(completedMatches.map(m => `${m.bracketType}-${m.round}-${m.bracketPosition}`));
+  
   // Generate Winner's Bracket - First Round
   const firstRoundMatches = Math.ceil(numPlayers / 2);
   for (let pos = 0; pos < firstRoundMatches; pos++) {
+    const positionKey = `winner-1-${pos}`;
+    
+    // Skip if this position is already taken by a completed match
+    if (completedPositions.has(positionKey)) {
+      continue;
+    }
+    
     const playerIndex1 = pos * 2;
     const playerIndex2 = pos * 2 + 1;
     
@@ -383,6 +551,13 @@ async function generateDoubleElimination(
     const matchesInRound = Math.floor(currentRoundMatches / 2);
     
     for (let pos = 0; pos < matchesInRound; pos++) {
+      const positionKey = `winner-${round}-${pos}`;
+      
+      // Skip if this position is already taken by a completed match
+      if (completedPositions.has(positionKey)) {
+        continue;
+      }
+      
       const match = {
         tournamentId,
         player1Id: undefined,
@@ -450,6 +625,13 @@ async function generateDoubleElimination(
     
     // Create matches for this round
     for (let pos = 0; pos < matchesInRound; pos++) {
+      const positionKey = `loser-${round}-${pos}`;
+      
+      // Skip if this position is already taken by a completed match
+      if (completedPositions.has(positionKey)) {
+        continue;
+      }
+      
       const match = {
         tournamentId,
         player1Id: undefined,
@@ -564,7 +746,8 @@ async function generateDoubleElimination(
     numWinnerRounds, 
     numLoserRounds,
     totalMatches: matches.length,
-    numPlayers 
+    numPlayers,
+    preservedMatches: completedMatches.length
   };
 }
 
@@ -572,18 +755,40 @@ async function generateDoubleElimination(
 async function generateRoundRobin(
   ctx: any,
   tournamentId: Id<"tournaments">,
-  players: any[]
+  players: any[],
+  completedMatches: any[] = []
 ) {
   const numPlayers = players.length;
   let matchPosition = 0;
   
+  // Track players already in completed matches
+  const placedPlayers = new Set<Id<"players">>();
+  completedMatches.forEach(m => {
+    if (m.player1Id) placedPlayers.add(m.player1Id);
+    if (m.player2Id) placedPlayers.add(m.player2Id);
+  });
+  
+  // Track completed match positions to avoid duplicates
+  const completedPositions = new Set(completedMatches.map(m => `${m.player1Id}-${m.player2Id}`));
+  
   // Create matches for every player vs every other player
+  // Skip matches that are already completed
   for (let i = 0; i < numPlayers; i++) {
     for (let j = i + 1; j < numPlayers; j++) {
+      const player1Id = players[i].playerId;
+      const player2Id = players[j].playerId;
+      const positionKey1 = `${player1Id}-${player2Id}`;
+      const positionKey2 = `${player2Id}-${player1Id}`;
+      
+      // Skip if this match is already completed
+      if (completedPositions.has(positionKey1) || completedPositions.has(positionKey2)) {
+        continue;
+      }
+      
       await ctx.db.insert("matches", {
         tournamentId,
-        player1Id: players[i].playerId,
-        player2Id: players[j].playerId,
+        player1Id,
+        player2Id,
         round: 1, // All matches are in "round 1" for round robin
         bracketPosition: matchPosition,
         player1Score: 0,
@@ -596,7 +801,12 @@ async function generateRoundRobin(
     }
   }
   
-  return { message: "Round robin bracket generated", numRounds: 1, numPlayers };
+  return { 
+    message: "Round robin bracket generated", 
+    numRounds: 1, 
+    numPlayers,
+    preservedMatches: completedMatches.length
+  };
 }
 
 // Helper function to advance winner to next round

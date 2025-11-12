@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
 import type * as counters from "../counters.js";
 import type * as files from "../files.js";
@@ -18,6 +19,7 @@ import type * as matches from "../matches.js";
 import type * as notifications from "../notifications.js";
 import type * as players from "../players.js";
 import type * as posts from "../posts.js";
+import type * as sessions from "../sessions.js";
 import type * as tournaments from "../tournaments.js";
 import type * as users from "../users.js";
 import type * as venues from "../venues.js";
@@ -37,6 +39,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  accounts: typeof accounts;
   auth: typeof auth;
   counters: typeof counters;
   files: typeof files;
@@ -47,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   players: typeof players;
   posts: typeof posts;
+  sessions: typeof sessions;
   tournaments: typeof tournaments;
   users: typeof users;
   venues: typeof venues;

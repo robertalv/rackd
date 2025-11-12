@@ -18,7 +18,6 @@ export function useImageUpload(options: UseImageUploadOptions) {
   const [uploadProgress, setUploadProgress] = useState(0)
   
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
-  const saveFile = useMutation(api.files.saveFile)
 
   const uploadImage = async (file: File) => {
     if (!file) {
@@ -59,33 +58,18 @@ export function useImageUpload(options: UseImageUploadOptions) {
       }
 
       const { storageId } = await response.json()
-      setUploadProgress(50)
-
-      // Save file metadata to database
-      const fileId = await saveFile({
-        storageId,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        category: options.category,
-        relatedId: options.relatedId,
-        relatedType: options.relatedType,
-        description: `Profile image for ${options.relatedType || 'user'}`,
-      })
-
-      setUploadProgress(80)
+      setUploadProgress(100)
 
       // For now, we'll use the storageId as the image URL since Convex will handle the URL generation
       // In a real implementation, you'd get the actual URL from the server
       const imageUrl = storageId // The backend will resolve this to a proper URL
-      setUploadProgress(100)
 
       if (options.onSuccess) {
         options.onSuccess(imageUrl, storageId)
       }
 
       toast.success("Image uploaded successfully!")
-      return { imageUrl, storageId, fileId }
+      return { imageUrl, storageId }
 
     } catch (error) {
       console.error("Image upload failed:", error)

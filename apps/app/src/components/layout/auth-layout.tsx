@@ -16,7 +16,7 @@ export function AuthLayout({ children, className, ...props }: AuthLayoutProps) {
           alt="Rackd logo" 
           className="h-16 w-16"
         />
-        <span className="text-5xl font-bold lowercase tracking-tighter font-mono">rackd</span>
+        <span className="font-bold lowercase tracking-tighter md:block text-4xl">rackd</span>
       </div>
 
       {/* Main content area - centered and flexible */}

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useAction } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@rackd/backend/convex/_generated/api"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@rackd/ui/components/card"
@@ -22,38 +22,21 @@ import {
 import { SessionDetailDialog } from "./session-detail-dialog"
 
 export function SessionsManager() {
-  const [sessions, setSessions] = React.useState<any[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
   const [selectedSession, setSelectedSession] = React.useState<any | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false)
-  const getMySessions = useAction(api.sessions.getMySessions)
-  const revokeSession = useAction(api.sessions.revokeSession)
-  const revokeAllOtherSessions = useAction(api.sessions.revokeAllOtherSessions)
+  
+  const sessions = useQuery(api.sessions.getMySessions) ?? []
+  const revokeSession = useMutation(api.sessions.revokeSession)
+  const revokeAllOtherSessions = useMutation(api.sessions.revokeAllOtherSessions)
 
-  React.useEffect(() => {
-    loadSessions()
-  }, [])
+  const isLoading = sessions === undefined
 
-  const loadSessions = async () => {
-    try {
-      setIsLoading(true)
-      const data = await getMySessions({})
-      setSessions(data || [])
-    } catch (error) {
-      console.error("Failed to load sessions:", error)
-      toast.error("Failed to load sessions")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleRevokeSession = async (sessionId: string) => {
+  const handleRevokeSession = async (sessionId: any) => {
     try {
       await revokeSession({ sessionId })
       toast.success("Session revoked successfully")
       setIsDetailDialogOpen(false)
       setSelectedSession(null)
-      loadSessions()
     } catch (error) {
       console.error("Failed to revoke session:", error)
       toast.error("Failed to revoke session")
@@ -75,14 +58,13 @@ export function SessionsManager() {
     try {
       await revokeAllOtherSessions({})
       toast.success("All other sessions revoked successfully")
-      loadSessions()
     } catch (error) {
       console.error("Failed to revoke sessions:", error)
       toast.error("Failed to revoke sessions")
     }
   }
 
-  const getDeviceIcon = (deviceName?: string) => {
+  const getDeviceIcon = (deviceName?: string | null) => {
     if (!deviceName) return <Globe className="h-4 w-4" />
     const lower = deviceName.toLowerCase()
     if (lower.includes("iphone") || lower.includes("android") || lower.includes("mobile")) {
@@ -94,13 +76,13 @@ export function SessionsManager() {
     return <Monitor className="h-4 w-4" />
   }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Unknown"
+  const formatDate = (dateValue?: string | number | null) => {
+    if (!dateValue) return "Unknown"
     try {
-      const date = new Date(dateString)
+      const date = typeof dateValue === "number" ? new Date(dateValue) : new Date(dateValue)
       return date.toLocaleString()
     } catch {
-      return dateString
+      return String(dateValue)
     }
   }
 
@@ -181,9 +163,6 @@ export function SessionsManager() {
                         )}
                         {session.ipAddress && (
                           <p>IP Address: {session.ipAddress}</p>
-                        )}
-                        {session.city && session.country && (
-                          <p>Location: {session.city}, {session.country}</p>
                         )}
                         {session.lastAccessedAt && (
                           <p>Last accessed: {formatDate(session.lastAccessedAt)}</p>

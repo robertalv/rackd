@@ -17,9 +17,15 @@ import { Route as UnauthenticatedSignupRouteImport } from './routes/_unauthentic
 import { Route as UnauthenticatedResetPasswordRouteImport } from './routes/_unauthenticated/reset-password'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 import { Route as UnauthenticatedForgotPasswordRouteImport } from './routes/_unauthenticated/forgot-password'
+import { Route as AuthenticatedTournamentsRouteImport } from './routes/_authenticated/tournaments'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
+import { Route as AuthenticatedTournamentsIndexRouteImport } from './routes/_authenticated/tournaments/index'
 import { Route as AuthenticatedFeedIndexRouteImport } from './routes/_authenticated/feed/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedTournamentsNewRouteImport } from './routes/_authenticated/tournaments/new'
+import { Route as AuthenticatedTournamentsIdRouteImport } from './routes/_authenticated/tournaments/$id'
+import { Route as AuthenticatedTournamentsIdTablesRouteImport } from './routes/_authenticated/tournaments/$id/tables'
+import { Route as AuthenticatedTournamentsIdPlayersRouteImport } from './routes/_authenticated/tournaments/$id/players'
 
 const UnauthenticatedRoute = UnauthenticatedRouteImport.update({
   id: '/_unauthenticated',
@@ -62,11 +68,23 @@ const UnauthenticatedForgotPasswordRoute =
     path: '/forgot-password',
     getParentRoute: () => UnauthenticatedRoute,
   } as any)
+const AuthenticatedTournamentsRoute =
+  AuthenticatedTournamentsRouteImport.update({
+    id: '/tournaments',
+    path: '/tournaments',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTournamentsIndexRoute =
+  AuthenticatedTournamentsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedTournamentsRoute,
+  } as any)
 const AuthenticatedFeedIndexRoute = AuthenticatedFeedIndexRouteImport.update({
   id: '/feed/',
   path: '/feed/',
@@ -77,17 +95,47 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedTournamentsNewRoute =
+  AuthenticatedTournamentsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedTournamentsRoute,
+  } as any)
+const AuthenticatedTournamentsIdRoute =
+  AuthenticatedTournamentsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedTournamentsRoute,
+  } as any)
+const AuthenticatedTournamentsIdTablesRoute =
+  AuthenticatedTournamentsIdTablesRouteImport.update({
+    id: '/tables',
+    path: '/tables',
+    getParentRoute: () => AuthenticatedTournamentsIdRoute,
+  } as any)
+const AuthenticatedTournamentsIdPlayersRoute =
+  AuthenticatedTournamentsIdPlayersRouteImport.update({
+    id: '/players',
+    path: '/players',
+    getParentRoute: () => AuthenticatedTournamentsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/discover': typeof AuthenticatedDiscoverRoute
+  '/tournaments': typeof AuthenticatedTournamentsRouteWithChildren
   '/forgot-password': typeof UnauthenticatedForgotPasswordRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/reset-password': typeof UnauthenticatedResetPasswordRoute
   '/signup': typeof UnauthenticatedSignupRoute
   '/verify-email': typeof UnauthenticatedVerifyEmailRoute
   '/': typeof AuthenticatedIndexRoute
+  '/tournaments/$id': typeof AuthenticatedTournamentsIdRouteWithChildren
+  '/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/feed': typeof AuthenticatedFeedIndexRoute
+  '/tournaments/': typeof AuthenticatedTournamentsIndexRoute
+  '/tournaments/$id/players': typeof AuthenticatedTournamentsIdPlayersRoute
+  '/tournaments/$id/tables': typeof AuthenticatedTournamentsIdTablesRoute
 }
 export interface FileRoutesByTo {
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -97,35 +145,52 @@ export interface FileRoutesByTo {
   '/signup': typeof UnauthenticatedSignupRoute
   '/verify-email': typeof UnauthenticatedVerifyEmailRoute
   '/': typeof AuthenticatedIndexRoute
+  '/tournaments/$id': typeof AuthenticatedTournamentsIdRouteWithChildren
+  '/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/feed': typeof AuthenticatedFeedIndexRoute
+  '/tournaments': typeof AuthenticatedTournamentsIndexRoute
+  '/tournaments/$id/players': typeof AuthenticatedTournamentsIdPlayersRoute
+  '/tournaments/$id/tables': typeof AuthenticatedTournamentsIdTablesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteWithChildren
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
+  '/_authenticated/tournaments': typeof AuthenticatedTournamentsRouteWithChildren
   '/_unauthenticated/forgot-password': typeof UnauthenticatedForgotPasswordRoute
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/reset-password': typeof UnauthenticatedResetPasswordRoute
   '/_unauthenticated/signup': typeof UnauthenticatedSignupRoute
   '/_unauthenticated/verify-email': typeof UnauthenticatedVerifyEmailRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/tournaments/$id': typeof AuthenticatedTournamentsIdRouteWithChildren
+  '/_authenticated/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/feed/': typeof AuthenticatedFeedIndexRoute
+  '/_authenticated/tournaments/': typeof AuthenticatedTournamentsIndexRoute
+  '/_authenticated/tournaments/$id/players': typeof AuthenticatedTournamentsIdPlayersRoute
+  '/_authenticated/tournaments/$id/tables': typeof AuthenticatedTournamentsIdTablesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/discover'
+    | '/tournaments'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/verify-email'
     | '/'
+    | '/tournaments/$id'
+    | '/tournaments/new'
     | '/api/auth/$'
     | '/feed'
+    | '/tournaments/'
+    | '/tournaments/$id/players'
+    | '/tournaments/$id/tables'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/discover'
@@ -135,21 +200,32 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/'
+    | '/tournaments/$id'
+    | '/tournaments/new'
     | '/api/auth/$'
     | '/feed'
+    | '/tournaments'
+    | '/tournaments/$id/players'
+    | '/tournaments/$id/tables'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
     | '/_authenticated/discover'
+    | '/_authenticated/tournaments'
     | '/_unauthenticated/forgot-password'
     | '/_unauthenticated/login'
     | '/_unauthenticated/reset-password'
     | '/_unauthenticated/signup'
     | '/_unauthenticated/verify-email'
     | '/_authenticated/'
+    | '/_authenticated/tournaments/$id'
+    | '/_authenticated/tournaments/new'
     | '/api/auth/$'
     | '/_authenticated/feed/'
+    | '/_authenticated/tournaments/'
+    | '/_authenticated/tournaments/$id/players'
+    | '/_authenticated/tournaments/$id/tables'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -216,12 +292,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnauthenticatedForgotPasswordRouteImport
       parentRoute: typeof UnauthenticatedRoute
     }
+    '/_authenticated/tournaments': {
+      id: '/_authenticated/tournaments'
+      path: '/tournaments'
+      fullPath: '/tournaments'
+      preLoaderRoute: typeof AuthenticatedTournamentsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/discover': {
       id: '/_authenticated/discover'
       path: '/discover'
       fullPath: '/discover'
       preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tournaments/': {
+      id: '/_authenticated/tournaments/'
+      path: '/'
+      fullPath: '/tournaments/'
+      preLoaderRoute: typeof AuthenticatedTournamentsIndexRouteImport
+      parentRoute: typeof AuthenticatedTournamentsRoute
     }
     '/_authenticated/feed/': {
       id: '/_authenticated/feed/'
@@ -237,17 +327,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/tournaments/new': {
+      id: '/_authenticated/tournaments/new'
+      path: '/new'
+      fullPath: '/tournaments/new'
+      preLoaderRoute: typeof AuthenticatedTournamentsNewRouteImport
+      parentRoute: typeof AuthenticatedTournamentsRoute
+    }
+    '/_authenticated/tournaments/$id': {
+      id: '/_authenticated/tournaments/$id'
+      path: '/$id'
+      fullPath: '/tournaments/$id'
+      preLoaderRoute: typeof AuthenticatedTournamentsIdRouteImport
+      parentRoute: typeof AuthenticatedTournamentsRoute
+    }
+    '/_authenticated/tournaments/$id/tables': {
+      id: '/_authenticated/tournaments/$id/tables'
+      path: '/tables'
+      fullPath: '/tournaments/$id/tables'
+      preLoaderRoute: typeof AuthenticatedTournamentsIdTablesRouteImport
+      parentRoute: typeof AuthenticatedTournamentsIdRoute
+    }
+    '/_authenticated/tournaments/$id/players': {
+      id: '/_authenticated/tournaments/$id/players'
+      path: '/players'
+      fullPath: '/tournaments/$id/players'
+      preLoaderRoute: typeof AuthenticatedTournamentsIdPlayersRouteImport
+      parentRoute: typeof AuthenticatedTournamentsIdRoute
+    }
   }
 }
 
+interface AuthenticatedTournamentsIdRouteChildren {
+  AuthenticatedTournamentsIdPlayersRoute: typeof AuthenticatedTournamentsIdPlayersRoute
+  AuthenticatedTournamentsIdTablesRoute: typeof AuthenticatedTournamentsIdTablesRoute
+}
+
+const AuthenticatedTournamentsIdRouteChildren: AuthenticatedTournamentsIdRouteChildren =
+  {
+    AuthenticatedTournamentsIdPlayersRoute:
+      AuthenticatedTournamentsIdPlayersRoute,
+    AuthenticatedTournamentsIdTablesRoute:
+      AuthenticatedTournamentsIdTablesRoute,
+  }
+
+const AuthenticatedTournamentsIdRouteWithChildren =
+  AuthenticatedTournamentsIdRoute._addFileChildren(
+    AuthenticatedTournamentsIdRouteChildren,
+  )
+
+interface AuthenticatedTournamentsRouteChildren {
+  AuthenticatedTournamentsIdRoute: typeof AuthenticatedTournamentsIdRouteWithChildren
+  AuthenticatedTournamentsNewRoute: typeof AuthenticatedTournamentsNewRoute
+  AuthenticatedTournamentsIndexRoute: typeof AuthenticatedTournamentsIndexRoute
+}
+
+const AuthenticatedTournamentsRouteChildren: AuthenticatedTournamentsRouteChildren =
+  {
+    AuthenticatedTournamentsIdRoute:
+      AuthenticatedTournamentsIdRouteWithChildren,
+    AuthenticatedTournamentsNewRoute: AuthenticatedTournamentsNewRoute,
+    AuthenticatedTournamentsIndexRoute: AuthenticatedTournamentsIndexRoute,
+  }
+
+const AuthenticatedTournamentsRouteWithChildren =
+  AuthenticatedTournamentsRoute._addFileChildren(
+    AuthenticatedTournamentsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
+  AuthenticatedTournamentsRoute: typeof AuthenticatedTournamentsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedFeedIndexRoute: typeof AuthenticatedFeedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
+  AuthenticatedTournamentsRoute: AuthenticatedTournamentsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedFeedIndexRoute: AuthenticatedFeedIndexRoute,
 }

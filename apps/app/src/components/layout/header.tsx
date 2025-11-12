@@ -44,7 +44,7 @@ import { useSettingsState } from "@/providers/SettingsProvider";
 
 export function Header() {
   const navigate = useNavigate();
-	const { user: currentUser, isLoading } = useCurrentUser();
+	const { user: currentUser } = useCurrentUser();
 	const profileCompletion = currentUser ? calculateProfileCompletion(currentUser) : 0;
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const { open: settingsDialogOpen, setOpen: setSettingsDialogOpen, initialTab } = useSettingsState();
@@ -95,7 +95,7 @@ export function Header() {
               alt="Rackd logo" 
               className="h-8 w-8"
             />
-            <span className="hidden font-bold lowercase tracking-tighter font-mono md:block text-xl">rackd</span>
+            <span className="hidden font-bold lowercase tracking-tighter md:block text-xl">rackd</span>
           </Link>
         </div>
 
@@ -206,15 +206,21 @@ export function Header() {
               Feed
             </Link>
             <div
-              onClick={() => navigate({ to: "/discover" })}
+              onClick={() => {
+                navigate({ to: "/discover" });
+                setSidebarOpen(false);
+              }}
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
             >
               <User className="h-4 w-4" />
               Discover
             </div>
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors cursor-pointer" onClick={() => {
+              navigate({ to: "/tournaments" });
+              setSidebarOpen(false);
+            }}>
               <Trophy className="h-4 w-4" />
-              Tournaments (Coming Soon)
+              Tournaments
             </div>
             <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
@@ -260,7 +266,7 @@ export function Header() {
         dangerZone={<DangerZone user={currentUser} />}
         sessionsManager={<SessionsManager />}
         interestsManager={<InterestTagsManager interests={currentUser?.interests || []} maxTags={15} placeholder="e.g., 8-ball, 9-ball, tournaments..." />}
-        connectedAccounts={<ConnectedAccounts userId={currentUser?.id} />}
+        connectedAccounts={<ConnectedAccounts />}
         initialTab={initialTab}
       />
     )}

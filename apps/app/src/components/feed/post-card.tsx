@@ -15,6 +15,7 @@ import { PostImage } from "./post-image";
 import { CommentInput } from "./comment-input";
 import { Comment } from "./comment";
 import { MentionText } from "./mention-text";
+import { TournamentPostCard } from "./tournament-post-card";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@rackd/ui/components/tooltip";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -23,6 +24,10 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  // If this post has a tournament, use the special tournament post card
+  if (post.tournamentId && post.tournament) {
+    return <TournamentPostCard post={post} />;
+  }
   const [showComments, setShowComments] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);

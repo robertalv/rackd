@@ -82,24 +82,34 @@ export async function getCurrentUserOrThrow(ctx: QueryCtx | MutationCtx) {
 				// Try to auto-create user (only in mutation context)
 				try {
 					const now = Date.now();
+					const username = (user as any)?.username || user.email?.split("@")[0] || "user";
+					const displayName = user.name || user.email?.split("@")[0] || "User";
+					
 					const userId = await ctx.db.insert("users", {
 						name: user.name || user.email?.split("@")[0] || "User",
 						email: user.email || "",
 						betterAuthId: betterAuthId,
 						emailVerified: user.emailVerified ?? false,
-						image: user.image ?? null,
+						image: user.image ?? undefined,
 						createdAt: user.createdAt ?? now,
 						updatedAt: user.updatedAt ?? now,
-						username: (user as any)?.username ?? null,
-						locale: (user as any)?.locale ?? null,
-						paymentsCustomerId: (user as any)?.paymentsCustomerId ?? null,
+						username: username,
+						displayName: displayName,
+						locale: (user as any)?.locale ?? undefined,
+						paymentsCustomerId: (user as any)?.paymentsCustomerId ?? undefined,
 						onboardingComplete: false,
-						role: null,
-						banned: null,
-						banReason: null,
-						banExpires: null,
-						interests: null,
+						role: undefined,
+						banned: undefined,
+						banReason: undefined,
+						banExpires: undefined,
+						interests: undefined,
 						playerId: undefined,
+						followerCount: 0,
+						followingCount: 0,
+						postCount: 0,
+						isPrivate: false,
+						allowMessages: true,
+						lastActive: now,
 					});
 					dbUser = await ctx.db.get(userId);
 					console.log("[getCurrentUserOrThrow] Auto-created user in custom users table:", userId);

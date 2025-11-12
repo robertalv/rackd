@@ -65,13 +65,32 @@ export default function TabLayout() {
 			<Tabs.Screen
 				name="post/[postId]"
 				options={{
-					href: null, // Hide from tab bar
+					href: null,
 				}}
 			/>
 			<Tabs.Screen
 				name="discover"
 				options={{
-					href: null, // Hide from tab bar
+					href: null,
+				}}
+			/>
+			<Tabs.Screen
+				name="tournaments/new"
+				options={{
+					href: null,
+				}}
+			/>
+			<Tabs.Screen
+				name="tournaments/[tournamentId]"
+				options={{
+					href: null,
+				}}
+			/>
+
+			<Tabs.Screen
+				name="tournaments/[tournamentId]/players"
+				options={{
+					href: null,
 				}}
 			/>
 		</Tabs>

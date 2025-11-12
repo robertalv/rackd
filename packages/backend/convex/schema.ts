@@ -3,23 +3,48 @@ import { v } from "convex/values";
 
 export const tables = {
 	users: defineTable({
-		name: v.string(),
 		email: v.string(),
 		emailVerified: v.boolean(),
-		image: v.optional(v.union(v.null(), v.string())),
+		betterAuthId: v.optional(v.string()),
 		createdAt: v.number(),
 		updatedAt: v.number(),
-		username: v.optional(v.union(v.null(), v.string())),
-		role: v.optional(v.union(v.null(), v.string())),
-		banned: v.optional(v.union(v.null(), v.boolean())),
-		banReason: v.optional(v.union(v.null(), v.string())),
-		banExpires: v.optional(v.union(v.null(), v.number())),
-		onboardingComplete: v.boolean(),
-		paymentsCustomerId: v.optional(v.union(v.null(), v.string())),
-		locale: v.optional(v.union(v.null(), v.string())),
-		interests: v.optional(v.union(v.null(), v.array(v.string()))),
+
+		firstName: v.optional(v.string()),
+		lastName: v.optional(v.string()),
+		name: v.optional(v.string()),
+		nickname: v.optional(v.string()),
+		phoneNumber: v.optional(v.string()),
+
+		username: v.string(),
+		displayName: v.string(),
+		bio: v.optional(v.string()),
+		image: v.optional(v.string()),
+		coverImage: v.optional(v.string()),
+
+		city: v.optional(v.string()),
+		region: v.optional(v.string()),
+		country: v.optional(v.string()),
+
 		playerId: v.optional(v.id("players")),
-		betterAuthId: v.optional(v.string()),
+
+		followerCount: v.number(),
+		followingCount: v.number(),
+		postCount: v.number(),
+
+		isPrivate: v.boolean(),
+		allowMessages: v.boolean(),
+
+		interests: v.optional(v.array(v.string())),
+
+		lastActive: v.number(),
+
+		role: v.optional(v.string()),
+		banned: v.optional(v.boolean()),
+		banReason: v.optional(v.string()),
+		banExpires: v.optional(v.number()),
+		onboardingComplete: v.boolean(),
+		paymentsCustomerId: v.optional(v.string()),
+		locale: v.optional(v.string()),
 	})
 		.index("by_email", ["email"])
 		.index("by_username", ["username"])
@@ -164,24 +189,29 @@ export const tables = {
 	posts: defineTable({
 		userId: v.id("users"),
 		content: v.string(),
-		images: v.optional(v.union(v.null(), v.array(v.string()))),
-		video: v.optional(v.union(v.null(), v.string())),
+
+		images: v.optional(v.array(v.string())),
+		video: v.optional(v.string()),
+
 		tournamentId: v.optional(v.id("tournaments")),
 		matchId: v.optional(v.id("matches")),
 		venueId: v.optional(v.id("venues")),
+
 		type: v.union(
 			v.literal("post"),
 			v.literal("highlight"),
 			v.literal("tournament_update"),
 			v.literal("result"),
 		),
+
 		likeCount: v.number(),
 		commentCount: v.number(),
 		shareCount: v.number(),
-		isPublic: v.boolean(),
-		isPinned: v.optional(v.union(v.null(), v.boolean())),
 
-		updatedAt: v.optional(v.union(v.null(), v.number())),
+		isPublic: v.boolean(),
+		isPinned: v.optional(v.boolean()),
+
+		updatedAt: v.optional(v.number()),
 	})
 		.index("by_user", ["userId"])
 		.index("by_tournament", ["tournamentId"])
@@ -453,6 +483,27 @@ export const tables = {
 		isPublic: v.boolean(),
 		isFeatured: v.boolean(),
 
+		houseFeePerPlayer: v.optional(v.union(v.null(), v.number())),
+		payoutStructure: v.optional(
+			v.union(
+				v.null(),
+				v.object({
+					totalCollected: v.number(),
+					houseFee: v.number(),
+					potAmount: v.number(),
+					paidPlayers: v.number(),
+					payouts: v.array(
+						v.object({
+							place: v.number(),
+							amount: v.number(),
+							percentage: v.number(),
+						})
+					),
+					rationale: v.optional(v.string()),
+				}),
+			),
+		),
+
 		updatedAt: v.optional(v.union(v.null(), v.number())),
 	})
 		.index("by_organizer", ["organizerId"])
@@ -503,6 +554,22 @@ export const tables = {
 		.index("by_user", ["userId"])
 		.index("by_tournament_and_status", ["tournamentId", "status"]),
 
+	tournamentManagers: defineTable({
+		tournamentId: v.id("tournaments"),
+		userId: v.id("users"),
+		role: v.union(
+			v.literal("manager"),
+			v.literal("admin"),
+		),
+		accepted: v.boolean(),
+		invitedBy: v.id("users"),
+		invitedAt: v.number(),
+		acceptedAt: v.optional(v.union(v.null(), v.number())),
+	})
+		.index("by_tournament", ["tournamentId"])
+		.index("by_user", ["userId"])
+		.index("by_tournament_and_user", ["tournamentId", "userId"]),
+
 	matches: defineTable({
 		tournamentId: v.id("tournaments"),
 		player1Id: v.optional(v.id("players")),
@@ -541,35 +608,6 @@ export const tables = {
 		.index("by_round", ["tournamentId", "round"])
 		.index("by_bracket_position", ["tournamentId", "bracketPosition"]),
 
-	files: defineTable({
-		storageId: v.id("_storage"),
-		name: v.string(),
-		type: v.optional(v.union(v.null(), v.string())),
-		size: v.optional(v.union(v.null(), v.number())),
-		description: v.optional(v.union(v.null(), v.string())),
-		category: v.union(
-			v.literal("tournament_flyer"),
-			v.literal("venue_image"),
-			v.literal("player_avatar"),
-			v.literal("document"),
-			v.literal("other"),
-		),
-		relatedId: v.optional(v.union(v.null(), v.string())),
-		relatedType: v.optional(
-			v.union(
-				v.null(),
-				v.literal("tournament"),
-				v.literal("venue"),
-				v.literal("player"),
-				v.literal("user"),
-			),
-		),
-		uploadedAt: v.number(),
-	})
-		.index("by_storage_id", ["storageId"])
-		.index("by_category", ["category"])
-		.index("by_category_and_related", ["category", "relatedId"])
-		.index("by_related", ["relatedType", "relatedId"]),
 };
 
 const schema = defineSchema(tables);

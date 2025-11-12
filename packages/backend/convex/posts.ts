@@ -120,14 +120,48 @@ export const getFeed = query({
       .filter(p => followingIds.includes(p.userId))
       .slice(0, args.limit || 50);
 
-    // Populate with user data
+    // Populate with user, tournament, and venue data
     return await Promise.all(
       feedPosts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
+        let tournament = null;
+        let venue = null;
+        
+        if (post.tournamentId) {
+          tournament = await ctx.db.get(post.tournamentId);
+          if (tournament) {
+            // Get venue info from tournament if available
+            if (tournament.venueId) {
+              venue = await ctx.db.get(tournament.venueId);
+            }
+            tournament = {
+              ...tournament,
+              venue: venue ? {
+                name: venue.name,
+                city: venue.city,
+                region: venue.region,
+                country: venue.country,
+              } : null,
+            };
+          }
+        }
+        
+        // Get venue from post if not already set from tournament
+        if (post.venueId && !venue) {
+          venue = await ctx.db.get(post.venueId);
+        }
         
         return { 
           ...post, 
-          user: user || null
+          user: user || null,
+          tournament: tournament || null,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            region: venue.region,
+            country: venue.country,
+          } : null
         };
       })
     );
@@ -147,14 +181,48 @@ export const getByUser = query({
       .order("desc")
       .take(args.limit || 50);
 
-    // Populate with user data
+    // Populate with user, tournament, and venue data
     return await Promise.all(
       posts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
+        let tournament = null;
+        let venue = null;
+        
+        if (post.tournamentId) {
+          tournament = await ctx.db.get(post.tournamentId);
+          if (tournament) {
+            // Get venue info from tournament if available
+            if (tournament.venueId) {
+              venue = await ctx.db.get(tournament.venueId);
+            }
+            tournament = {
+              ...tournament,
+              venue: venue ? {
+                name: venue.name,
+                city: venue.city,
+                region: venue.region,
+                country: venue.country,
+              } : null,
+            };
+          }
+        }
+        
+        // Get venue from post if not already set from tournament
+        if (post.venueId && !venue) {
+          venue = await ctx.db.get(post.venueId);
+        }
         
         return { 
           ...post, 
-          user: user || null
+          user: user || null,
+          tournament: tournament || null,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            region: venue.region,
+            country: venue.country,
+          } : null
         };
       })
     );
@@ -169,10 +237,44 @@ export const getPost = query({
     if (!post) return null;
 
     const user = await ctx.db.get(post.userId);
+    let tournament = null;
+    let venue = null;
+    
+    if (post.tournamentId) {
+      tournament = await ctx.db.get(post.tournamentId);
+      if (tournament) {
+        // Get venue info from tournament if available
+        if (tournament.venueId) {
+          venue = await ctx.db.get(tournament.venueId);
+        }
+        tournament = {
+          ...tournament,
+          venue: venue ? {
+            name: venue.name,
+            city: venue.city,
+            region: venue.region,
+            country: venue.country,
+          } : null,
+        };
+      }
+    }
+    
+    // Get venue from post if not already set from tournament
+    if (post.venueId && !venue) {
+      venue = await ctx.db.get(post.venueId);
+    }
     
     return { 
       ...post, 
-      user: user || null
+      user: user || null,
+      tournament: tournament || null,
+      venue: venue ? {
+        _id: venue._id,
+        name: venue.name,
+        city: venue.city,
+        region: venue.region,
+        country: venue.country,
+      } : null
     };
   },
 });
@@ -662,14 +764,48 @@ export const getDiscoverFeed = query({
       .order("desc")
       .take((args.limit || 50) * 2); // Take more to filter later
 
-    // Populate with user data
+    // Populate with user, tournament, and venue data
     let postsWithUsers = await Promise.all(
       posts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
+        let tournament = null;
+        let venue = null;
+        
+        if (post.tournamentId) {
+          tournament = await ctx.db.get(post.tournamentId);
+          if (tournament) {
+            // Get venue info from tournament if available
+            if (tournament.venueId) {
+              venue = await ctx.db.get(tournament.venueId);
+            }
+            tournament = {
+              ...tournament,
+              venue: venue ? {
+                name: venue.name,
+                city: venue.city,
+                region: venue.region,
+                country: venue.country,
+              } : null,
+            };
+          }
+        }
+        
+        // Get venue from post if not already set from tournament
+        if (post.venueId && !venue) {
+          venue = await ctx.db.get(post.venueId);
+        }
         
         return { 
           ...post, 
-          user: user || null
+          user: user || null,
+          tournament: tournament || null,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            region: venue.region,
+            country: venue.country,
+          } : null
         };
       })
     );

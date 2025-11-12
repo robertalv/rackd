@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { Button } from "@rackd/ui/components/button"
 import { Badge } from "@rackd/ui/components/badge"
 import {
@@ -28,10 +27,10 @@ export function SessionDetailDialog({
 }: SessionDetailDialogProps) {
   if (!session) return null
 
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "Unknown"
+  const formatDate = (dateValue?: string | number | null) => {
+    if (!dateValue) return "Unknown"
     try {
-      const date = new Date(dateString)
+      const date = typeof dateValue === "number" ? new Date(dateValue) : new Date(dateValue)
       return date.toLocaleString("en-US", {
         month: "short",
         day: "numeric",
@@ -40,7 +39,7 @@ export function SessionDetailDialog({
         minute: "2-digit",
       })
     } catch {
-      return dateString
+      return String(dateValue)
     }
   }
 

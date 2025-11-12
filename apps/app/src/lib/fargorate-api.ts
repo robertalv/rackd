@@ -1,4 +1,4 @@
-import { FargoRatePlayer, PlayerSearchResponse, RaceCalculationResponse, MatchOddsResponse } from './types'
+import type { FargoRatePlayer, PlayerSearchResponse, RaceCalculationResponse, MatchOddsResponse } from './types'
 
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 const cache = new Map<string, { data: FargoRatePlayer[] | PlayerSearchResponse | RaceCalculationResponse | MatchOddsResponse, timestamp: number }>()

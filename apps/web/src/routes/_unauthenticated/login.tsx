@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { LoginForm } from '@/components/auth/login-form';
 import { useConvexAuth } from 'convex/react';
 
 export const Route = createFileRoute('/_unauthenticated/login')({
@@ -13,6 +12,6 @@ function LoginPage() {
     return <div>Loading...</div>;
   }
 
-  return <LoginForm />;
+  return <span>Login</span>;
 }
 

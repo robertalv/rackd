@@ -4,55 +4,77 @@ import { useConvexAuth } from "convex/react";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 
 /**
- * Hook that provides Better Auth user data from Convex
- * Uses Better Auth's session management and Convex for user data
+ * Hook that provides user data from both Better Auth and the users table
+ * Uses Better Auth's session management and merges data from both sources
+ * Returns combined user object with all fields from both tables
  */
 export function useCurrentUser() {
   const { isAuthenticated } = useConvexAuth();
 
-  // Get Convex user data using Better Auth's getCurrentUser query
-  // This returns the authenticated user from Better Auth's user table
-  const convexUser = useQuery(
-    api.auth.getCurrentUser,
+  // Get both Better Auth user and users table user
+  const userData = useQuery(
+    api.auth.getCurrentUserWithUsersTable,
     isAuthenticated ? {} : "skip"
   );
 
-  // Combine data from Better Auth user object
-  const combinedUser = convexUser
+  const betterAuthUser = userData?.betterAuthUser;
+  const usersTableUser = userData?.usersTableUser;
+
+  // Combine data from both Better Auth and users table
+  const combinedUser = betterAuthUser
     ? {
-        // Convex user data (from Better Auth schema)
-        ...convexUser,
+        // Start with users table data if available (has more fields)
+        ...(usersTableUser || {}),
         
-        // Better Auth user fields (already in convexUser from getCurrentUser)
-        id: convexUser._id,
-        email: convexUser.email,
-        name: convexUser.name,
-        emailVerified: convexUser.emailVerified,
-        image: convexUser.image || null,
+        // Better Auth user fields (prefer users table values, fallback to Better Auth)
+        _id: usersTableUser?._id || (betterAuthUser._id as unknown as Id<"users">),
+        id: usersTableUser?._id || (betterAuthUser._id as unknown as Id<"users">),
+        email: usersTableUser?.email || betterAuthUser.email,
+        name: usersTableUser?.name || betterAuthUser.name,
+        emailVerified: usersTableUser?.emailVerified ?? betterAuthUser.emailVerified ?? false,
+        image: usersTableUser?.image || betterAuthUser.image || null,
         
-        // Computed fields
-        displayName: convexUser.name || convexUser.email || "User",
-        fullName: convexUser.name || undefined,
+        // Users table specific fields
+        betterAuthId: usersTableUser?.betterAuthId || (betterAuthUser._id as unknown as string),
+        displayName: usersTableUser?.displayName || usersTableUser?.name || betterAuthUser.name || betterAuthUser.email || "User",
+        fullName: usersTableUser?.name || betterAuthUser.name || undefined,
+        username: usersTableUser?.username || undefined,
+        bio: usersTableUser?.bio || undefined,
+        city: usersTableUser?.city || undefined,
+        country: usersTableUser?.country || undefined,
+        coverImage: usersTableUser?.coverImage || undefined,
+        firstName: usersTableUser?.firstName || undefined,
+        lastName: usersTableUser?.lastName || undefined,
+        role: usersTableUser?.role || undefined,
+        onboardingComplete: usersTableUser?.onboardingComplete ?? false,
+        locale: usersTableUser?.locale || undefined,
+        interests: usersTableUser?.interests || undefined,
+        playerId: usersTableUser?.playerId || undefined,
+        followerCount: usersTableUser?.followerCount ?? 0,
+        followingCount: usersTableUser?.followingCount ?? 0,
+        postCount: usersTableUser?.postCount ?? 0,
+        isPrivate: usersTableUser?.isPrivate ?? false,
+        allowMessages: usersTableUser?.allowMessages ?? true,
+        lastActive: usersTableUser?.lastActive || usersTableUser?._creationTime || betterAuthUser._creationTime,
+        banned: usersTableUser?.banned || false,
+        banReason: usersTableUser?.banReason || undefined,
+        banExpires: usersTableUser?.banExpires || undefined,
+        createdAt: usersTableUser?.createdAt || usersTableUser?._creationTime || betterAuthUser._creationTime,
+        updatedAt: usersTableUser?.updatedAt || usersTableUser?._creationTime || betterAuthUser._creationTime,
         
         // Image URL
-        imageUrl: convexUser.image || undefined,
-        imageSource: convexUser.image ? 'better-auth' : undefined,
-        
-        // Additional fields from Convex schema (if they exist)
-        username: (convexUser as any).username || undefined,
-        role: (convexUser as any).role || undefined,
-        onboardingComplete: (convexUser as any).onboardingComplete || false,
-        locale: (convexUser as any).locale || undefined,
-        createdAt: (convexUser as any).createdAt || convexUser._creationTime,
-        updatedAt: (convexUser as any).updatedAt || convexUser._creationTime,
+        imageUrl: usersTableUser?.image || betterAuthUser.image || undefined,
+        imageSource: (usersTableUser?.image || betterAuthUser.image) ? 'better-auth' : undefined,
       }
     : null;
 
   return {
     user: combinedUser,
-    authUser: convexUser,
-    convexUser,
-    isLoading: !isAuthenticated ? false : convexUser === undefined,
+    authUser: betterAuthUser,
+    convexUser: usersTableUser || betterAuthUser,
+    betterAuthUser,
+    usersTableUser,
+    isLoading: !isAuthenticated ? false : userData === undefined,
     error: null,
   };
 }

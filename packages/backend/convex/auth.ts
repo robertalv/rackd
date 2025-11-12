@@ -125,39 +125,62 @@ export const onCreate = internalMutation({
 			if (!user) {
 				// Create user in custom users table with all required fields
 				// Convex will generate a new _id, which is fine - we'll link by email
+				// Generate username if not provided
+				const username = betterAuthUser.username || betterAuthUser.email?.split("@")[0] || "user";
+				const displayName = betterAuthUser.name || betterAuthUser.email?.split("@")[0] || "User";
+				
 				const userId = await ctx.db.insert("users", {
 					name: betterAuthUser.name,
 					email: betterAuthUser.email,
 					betterAuthId: betterAuthUser._id as unknown as string,
 					emailVerified: betterAuthUser.emailVerified ?? false,
-					image: betterAuthUser.image ?? null,
+					image: betterAuthUser.image ?? undefined,
 					createdAt: betterAuthUser.createdAt ?? now,
 					updatedAt: betterAuthUser.updatedAt ?? now,
-					username: betterAuthUser.username ?? null,
-					locale: betterAuthUser.locale ?? null,
-					paymentsCustomerId: betterAuthUser.paymentsCustomerId ?? null,
+					username: username,
+					displayName: displayName,
+					locale: betterAuthUser.locale ?? undefined,
+					paymentsCustomerId: betterAuthUser.paymentsCustomerId ?? undefined,
 					onboardingComplete: false,
-					role: null,
-					banned: null,
-					banReason: null,
-					banExpires: null,
-					interests: null,
+					role: undefined,
+					banned: undefined,
+					banReason: undefined,
+					banExpires: undefined,
+					interests: undefined,
 					playerId: undefined, // Will be set after player creation
+					followerCount: 0,
+					followingCount: 0,
+					postCount: 0,
+					isPrivate: false,
+					allowMessages: true,
+					lastActive: now,
 				});
 				console.log("[onCreate Hook] User created in custom users table with ID:", userId);
 				user = await ctx.db.get(userId);
 			} else {
 				// Update existing user with any new fields from Better Auth
-				await ctx.db.patch(user._id, {
-					name: betterAuthUser.name,
-					email: betterAuthUser.email,
-					emailVerified: betterAuthUser.emailVerified ?? user.emailVerified,
-					image: betterAuthUser.image ?? user.image,
+				const patchUpdates: {
+					name?: string;
+					email?: string;
+					emailVerified?: boolean;
+					image?: string;
+					updatedAt: number;
+					username?: string;
+					locale?: string;
+					paymentsCustomerId?: string;
+				} = {
 					updatedAt: now,
-					username: betterAuthUser.username ?? user.username,
-					locale: betterAuthUser.locale ?? user.locale,
-					paymentsCustomerId: betterAuthUser.paymentsCustomerId ?? user.paymentsCustomerId,
-				});
+				};
+				
+				if (betterAuthUser.name) patchUpdates.name = betterAuthUser.name;
+				if (betterAuthUser.email) patchUpdates.email = betterAuthUser.email;
+				if (betterAuthUser.emailVerified !== undefined) patchUpdates.emailVerified = betterAuthUser.emailVerified;
+				if (betterAuthUser.image !== undefined) patchUpdates.image = betterAuthUser.image ?? undefined;
+				if (betterAuthUser.username !== undefined) patchUpdates.username = betterAuthUser.username ?? undefined;
+				if (betterAuthUser.locale !== undefined) patchUpdates.locale = betterAuthUser.locale ?? undefined;
+				if (betterAuthUser.paymentsCustomerId !== undefined) patchUpdates.paymentsCustomerId = betterAuthUser.paymentsCustomerId ?? undefined;
+				
+				await ctx.db.patch(user._id, patchUpdates);
 				console.log("[onCreate Hook] User updated in custom users table");
 			}
 
@@ -195,7 +218,7 @@ export const onCreate = internalMutation({
 
 			// Create player profile for the new user
 			const playerId = await ctx.db.insert("players", {
-				name: user.name,
+				name: user.name || user.email?.split("@")[0] || "Player",
 				userId: user._id,
 				bio: null,
 				avatarUrl: user.image ?? null,
@@ -389,7 +412,30 @@ export const getCurrentUser = query({
 	args: {},
 	returns: v.any(),
 	handler: async function (ctx) {
-		return authClient.getAuthUser(ctx);
+		return await authClient.getAuthUser(ctx);
+	},
+});
+
+export const getCurrentUserWithUsersTable = query({
+	args: {},
+	returns: v.any(),
+	handler: async function (ctx) {
+		const betterAuthUser = await authClient.getAuthUser(ctx);
+
+		if (!betterAuthUser) {
+			return null;
+		}
+
+		const betterAuthId = betterAuthUser._id as unknown as string;
+		const usersTableUser = await ctx.db
+			.query("users")
+			.withIndex("by_betterAuthId", (q) => q.eq("betterAuthId", betterAuthId))
+			.first();
+
+		return {
+			betterAuthUser,
+			usersTableUser: usersTableUser || null,
+		};
 	},
 });
 
@@ -586,9 +632,9 @@ export const updateUserProfile = mutation({
 
 		const updates: {
 			name?: string;
-			username?: string | null;
-			image?: string | null;
-			locale?: string | null;
+			username?: string;
+			image?: string;
+			locale?: string;
 			updatedAt: number;
 		} = {
 			updatedAt: Date.now(),
@@ -598,13 +644,13 @@ export const updateUserProfile = mutation({
 			updates.name = args.name;
 		}
 		if (args.username !== undefined) {
-			updates.username = args.username;
+			updates.username = args.username || undefined;
 		}
 		if (args.image !== undefined) {
-			updates.image = args.image;
+			updates.image = args.image || undefined;
 		}
 		if (args.locale !== undefined) {
-			updates.locale = args.locale;
+			updates.locale = args.locale || undefined;
 		}
 
 		const userId = user._id as unknown as Id<"users">;
@@ -669,7 +715,7 @@ export const syncUserToCustomTable = mutation({
 		const userEmail = authUser?.email || args.email!;
 		const userName = authUser?.name || args.name!;
 		const betterAuthId = authUser?._id ? (authUser._id as unknown as string) : args.betterAuthUserId;
-		const username = args.username || (authUser as any)?.username || null;
+		const username = args.username || (authUser as any)?.username || userEmail?.split("@")[0] || "user";
 
 		// Validate username if provided
 		if (username) {
@@ -701,24 +747,33 @@ export const syncUserToCustomTable = mutation({
 
 		if (!user) {
 			// Create user in custom users table
+			const displayName = userName || userEmail?.split("@")[0] || "User";
+			
 			const userId = await ctx.db.insert("users", {
 				name: userName,
 				email: userEmail,
 				betterAuthId: betterAuthId as unknown as string,
 				emailVerified: authUser?.emailVerified ?? false,
-				image: authUser?.image ?? null,
+				image: authUser?.image ?? undefined,
 				createdAt: authUser?.createdAt ?? now,
 				updatedAt: authUser?.updatedAt ?? now,
 				username: username,
-				locale: (authUser as any)?.locale ?? null,
-				paymentsCustomerId: (authUser as any)?.paymentsCustomerId ?? null,
+				displayName: displayName,
+				locale: (authUser as any)?.locale ?? undefined,
+				paymentsCustomerId: (authUser as any)?.paymentsCustomerId ?? undefined,
 				onboardingComplete: false,
-				role: null,
-				banned: null,
-				banReason: null,
-				banExpires: null,
-				interests: null,
+				role: undefined,
+				banned: undefined,
+				banReason: undefined,
+				banExpires: undefined,
+				interests: undefined,
 				playerId: undefined,
+				followerCount: 0,
+				followingCount: 0,
+				postCount: 0,
+				isPrivate: false,
+				allowMessages: true,
+				lastActive: now,
 			});
 			user = await ctx.db.get(userId);
 			console.log("[syncUserToCustomTable] User created in custom users table:", userId);
@@ -726,7 +781,7 @@ export const syncUserToCustomTable = mutation({
 			// Update existing user
 			const updates: {
 				betterAuthId?: string;
-				username?: string | null;
+				username?: string;
 				updatedAt: number;
 			} = {
 				updatedAt: now,
@@ -813,7 +868,7 @@ export const createPlayerProfile = mutation({
 
 		// Create new player profile
 		const playerId = await ctx.db.insert("players", {
-			name: user.name,
+			name: user.name || user.email?.split("@")[0] || "Player",
 			userId: user._id,
 			bio: null,
 			avatarUrl: user.image ?? null,

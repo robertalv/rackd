@@ -66,6 +66,13 @@ export const create = internalMutation({
       updatedAt: now,
       onboardingComplete: false,
       username: username,
+      displayName: args.name,
+      followerCount: 0,
+      followingCount: 0,
+      postCount: 0,
+      isPrivate: false,
+      allowMessages: true,
+      lastActive: now,
     });
     
     // Auto-create player record
@@ -120,19 +127,7 @@ export const updateImageWithStorageId = internalMutation({
     blobType: v.string(),
     blobSize: v.number(),
   },
-  handler: async (ctx, args) => {
-    // Save file metadata
-    await ctx.db.insert("files", {
-      storageId: args.storageId,
-      name: `profile-${args.userId}-${Date.now()}`,
-      type: args.blobType,
-      size: args.blobSize,
-      category: "player_avatar",
-      relatedId: args.userId,
-      relatedType: "user",
-      uploadedAt: Date.now(),
-    });
-    
+  handler: async (ctx, args) => {    
     // Update user image
     await ctx.db.patch(args.userId, {
       image: args.storageId as any,
@@ -326,7 +321,7 @@ export const checkName = query({
     // Note: We can't efficiently query by name alone, so we'll check all users
     // In production, you might want to add a name index
     const users = await ctx.db.query("users").collect();
-    const existing = users.find(u => u.name.toLowerCase() === args.name.toLowerCase());
+    const existing = users.find(u => u?.name?.toLowerCase() === args.name.toLowerCase());
     
     return !existing;
   },

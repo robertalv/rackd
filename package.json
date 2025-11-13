@@ -15,7 +15,9 @@
     "dev:server": "turbo -F @rackd/backend dev",
     "dev:setup": "turbo -F @rackd/backend dev:setup"
   },
-  "dependencies": {},
+  "dependencies": {
+    "convex": "catalog:"
+  },
   "devDependencies": {
     "turbo": "^2.5.4"
   },

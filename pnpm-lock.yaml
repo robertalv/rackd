@@ -43,6 +43,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      convex:
+        specifier: 'catalog:'
+        version: 1.28.2(react@19.1.0)
     devDependencies:
       turbo:
         specifier: ^2.5.4

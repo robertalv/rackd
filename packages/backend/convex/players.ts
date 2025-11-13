@@ -234,3 +234,118 @@ export const update = mutation({
     await ctx.db.patch(id, updates);
   },
 });
+
+// Query: Get tournaments organized by a player (through their user account)
+export const getOrganizedTournaments = query({
+  args: { playerId: v.id("players") },
+  handler: async (ctx, args) => {
+    const player = await ctx.db.get(args.playerId);
+    if (!player || !player.userId) {
+      return [];
+    }
+
+    const tournaments = await ctx.db
+      .query("tournaments")
+      .withIndex("by_organizer", (q) => q.eq("organizerId", player.userId as Id<"users">))
+      .collect();
+
+    return await Promise.all(
+      tournaments.map(async (tournament) => {
+        let venue = null;
+        if (tournament.venueId) {
+          venue = await ctx.db.get(tournament.venueId);
+        }
+
+        return {
+          ...tournament,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            state: venue.region,
+            country: venue.country,
+          } : null,
+        };
+      })
+    );
+  },
+});
+
+// Query: Get tournaments managed by a player (through their user account)
+export const getManagedTournaments = query({
+  args: { playerId: v.id("players") },
+  handler: async (ctx, args) => {
+    const player = await ctx.db.get(args.playerId);
+    if (!player || !player.userId) {
+      return [];
+    }
+
+    const managerRecords = await ctx.db
+      .query("tournamentManagers")
+      .withIndex("by_user", (q) => q.eq("userId", player.userId as Id<"users">))
+      .collect();
+
+    const tournamentIds = managerRecords.map(m => m.tournamentId);
+    
+    const tournaments = await Promise.all(
+      tournamentIds.map(async (tournamentId) => {
+        const tournament = await ctx.db.get(tournamentId);
+        if (!tournament) return null;
+
+        let venue = null;
+        if (tournament.venueId) {
+          venue = await ctx.db.get(tournament.venueId);
+        }
+
+        return {
+          ...tournament,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            state: venue.region,
+            country: venue.country,
+          } : null,
+        };
+      })
+    );
+
+    return tournaments.filter(t => t !== null);
+  },
+});
+
+// Query: Get tournaments played by a player
+export const getPlayedTournaments = query({
+  args: { playerId: v.id("players") },
+  handler: async (ctx, args) => {
+    const registrations = await ctx.db
+      .query("tournamentRegistrations")
+      .withIndex("by_player", (q) => q.eq("playerId", args.playerId))
+      .collect();
+
+    const tournaments = await Promise.all(
+      registrations.map(async (registration) => {
+        const tournament = await ctx.db.get(registration.tournamentId);
+        if (!tournament) return null;
+
+        let venue = null;
+        if (tournament.venueId) {
+          venue = await ctx.db.get(tournament.venueId);
+        }
+
+        return {
+          ...tournament,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            state: venue.region,
+            country: venue.country,
+          } : null,
+        };
+      })
+    );
+
+    return tournaments.filter(t => t !== null);
+  },
+});

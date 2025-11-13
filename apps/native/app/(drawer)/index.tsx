@@ -4,10 +4,6 @@ import { useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 
 export default function Home() {
-	const user = useQuery(api.auth.getCurrentUser, {});
-
-	// AuthGuard handles redirects, so we can assume user is authenticated here
-
 	return (
 		<Container className="p-6">
 			<View className="py-4 mb-6">

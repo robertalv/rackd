@@ -23,7 +23,6 @@ import { ProfileAvatar } from "../profile-avatar";
 export function FeedDashboard() {
   const isMobile = useIsMobile();
   const { user: currentUser } = useCurrentUser();
-  console.log("currentUser", currentUser);
   const isOwnProfile = useIsCurrentUser(currentUser?._id as unknown as Id<"users">);
   const [showHashtagSuggestions, setShowHashtagSuggestions] = useState(false);
   const [hashtagQuery, setHashtagQuery] = useState("");

@@ -93,6 +93,24 @@ export default function TabLayout() {
 					href: null,
 				}}
 			/>
+			<Tabs.Screen
+				name="players/[playerId]"
+				options={{
+					href: null,
+				}}
+			/>
+			<Tabs.Screen
+				name="[username]"
+				options={{
+					href: null,
+				}}
+			/>
+			<Tabs.Screen
+				name="post/new"
+				options={{
+					href: null,
+				}}
+			/>
 		</Tabs>
 	);
 }

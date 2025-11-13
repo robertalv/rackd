@@ -50,6 +50,7 @@ export function TournamentFlyerUpload({
 
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const deleteFileByStorageId = useMutation(api.files.deleteFileByStorageId);
+  const processImageUpload = useAction(api.files.processImageUpload);
   const extractInfo = useAction(api.tournaments.extractTournamentInfo);
 
   const onExtractInfoRef = useRef(onExtractInfo);
@@ -158,9 +159,21 @@ export function TournamentFlyerUpload({
         throw new Error("No storageId in upload response");
       }
 
-      setUploadProgress(100);
-      // Just return the storageId - no need to save metadata to a separate table
-      return { storageId };
+      setUploadProgress(75);
+
+      // Process image - automatically converts HEIC to web format
+      try {
+        const processed = await processImageUpload({ storageId });
+        // The processed.displayUrl is the converted URL, but we still return storageId
+        // The display component will handle showing the converted URL
+        setUploadProgress(100);
+        return { storageId };
+      } catch (error) {
+        console.error("Failed to process image (HEIC conversion):", error);
+        // Continue with original storageId if processing fails
+        setUploadProgress(100);
+        return { storageId };
+      }
     } catch (error) {
       console.error("Upload failed:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown upload error";
@@ -177,7 +190,7 @@ export function TournamentFlyerUpload({
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [generateUploadUrl]);
+  }, [generateUploadUrl, processImageUpload]);
 
   const handlePickImage = useCallback(async () => {
     try {

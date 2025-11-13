@@ -40,6 +40,18 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const checkInPlayer = useMutation(api.tournaments.checkInPlayer);
   const updatePaymentStatus = useMutation(api.tournaments.updatePaymentStatus);
   const getOrCreateFromFargoRate = useMutation(api.players.getOrCreateFromFargoRate);
+  const addLatePlayerToBracket = useMutation(api.matches.addLatePlayerToBracket);
+  
+  // Check if bracket exists and which players are already in it
+  const matches = useQuery(api.matches.getByTournament, { tournamentId });
+  const bracketExists = matches && matches.length > 0;
+  const playersInBracket = new Set(
+    matches?.flatMap(m => [m.player1Id, m.player2Id].filter(Boolean)) || []
+  );
+  
+  const isPlayerInBracket = (playerId: Id<"players"> | undefined) => {
+    return playerId ? playersInBracket.has(playerId) : false;
+  };
 
   const handleAddPlayer = async (playerId: Id<"players">) => {
     try {
@@ -62,9 +74,35 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const handleCheckIn = async (playerId: Id<"players">) => {
     try {
       await checkInPlayer({ tournamentId, playerId });
+      
+      // If bracket exists, automatically add the player to the bracket
+      if (bracketExists) {
+        try {
+          await addLatePlayerToBracket({ tournamentId, playerId });
+        } catch (bracketError: any) {
+          // Don't fail check-in if bracket addition fails - player is still checked in
+          console.warn("Failed to add player to bracket:", bracketError);
+          // Show a warning but don't block check-in
+          if (bracketError?.message?.includes("already in the bracket")) {
+            // Player is already in bracket, that's fine
+          } else {
+            alert(`Player checked in, but could not be added to bracket: ${bracketError?.message || "Unknown error"}`);
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to check in player:", error);
       alert("Failed to check in player.");
+    }
+  };
+
+  const handleAddToBracket = async (playerId: Id<"players">) => {
+    try {
+      await addLatePlayerToBracket({ tournamentId, playerId });
+      alert("Player added to bracket successfully!");
+    } catch (error: any) {
+      console.error("Failed to add player to bracket:", error);
+      alert(`Failed to add player to bracket: ${error?.message || "Unknown error"}`);
     }
   };
 
@@ -256,6 +294,17 @@ export function PlayerRegistration({ tournamentId }: Props) {
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
                               Check In
+                            </Button>
+                          )}
+                          {registration.checkedIn && bracketExists && !isPlayerInBracket(registration.player?._id) && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => registration.player?._id && handleAddToBracket(registration.player._id)}
+                              title="Add player to bracket"
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              Add to Bracket
                             </Button>
                           )}
                           <Button

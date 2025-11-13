@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success"
+    "dev:setup": "convex dev --configure --until-success",
+    "deploy": "convex deploy",
+    "deploy:prod": "convex deploy --prod",
+    "logs": "convex logs",
+    "logs:prod": "convex logs --prod"
   },
   "author": "",
   "license": "ISC",
@@ -19,6 +23,7 @@
     "@convex-dev/migrations": "^0.2.9",
     "@convex-dev/resend": "^0.1.13",
     "@convex-dev/sharded-counter": "^0.1.8",
+    "@rackd/cloudflare": "workspace:*",
     "better-auth": "catalog:",
     "convex": "catalog:",
     "resend": "^6.4.2"

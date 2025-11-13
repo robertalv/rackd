@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useThemeColor } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
 import { opacity, withOpacity } from "@/lib/opacity";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
@@ -14,6 +14,7 @@ import TournamentPayoutsScreen from "@/components/payouts";
 import { searchFargoRatePlayers, formatFargoRating, formatRobustness, type PlayerSearchResult } from "@/lib/fargorate-api";
 import { TablesManagement } from "@/components/tables-management";
 import { AddManagerModal } from "@/components/add-manager-modal";
+import { TournamentBracket } from "@/components/tournament-bracket";
 
 type ViewMode = "overview" | "players" | "matches" | "bracket" | "results" | "tables" | "payouts" | "settings";
 
@@ -54,6 +55,7 @@ export default function TournamentDetailScreen() {
 	const updatePaymentStatus = useMutation(api.tournaments.updatePaymentStatus);
 	const getOrCreateFromFargoRate = useMutation(api.players.getOrCreateFromFargoRate);
 	const removeManager = useMutation(api.tournaments.removeManager);
+	const updateTournament = useMutation(api.tournaments.update);
 	
 	const fargoIdsExist = useQuery(
 		api.players.checkFargoIdsExist,
@@ -195,6 +197,44 @@ export default function TournamentDetailScreen() {
 			.toUpperCase();
 	};
 
+	// Calculate match statistics (before early returns)
+	// TBD vs TBD matches are considered complete if status is "completed" (even without winnerId)
+	const allMatches = matches || [];
+	const completedMatches = allMatches.filter(m => {
+		if (m.status !== "completed") return false;
+		// TBD vs TBD matches (no players) are complete if status is completed
+		if (!m.player1Id && !m.player2Id) return true;
+		// Regular matches need a winnerId
+		return !!m.winnerId;
+	}).length;
+	const inProgressMatches = allMatches.filter(m => m.status === "in_progress").length;
+	const upcomingMatches = allMatches.filter(m => m.status === "pending").length;
+	const totalMatches = allMatches.length;
+	const completionPercentage = totalMatches > 0 
+		? Math.round((completedMatches / totalMatches) * 100) 
+		: 0;
+
+	// Automatically mark tournament as completed when all matches are done
+	// This hook MUST be called before any early returns
+	useEffect(() => {
+		if (
+			tournament &&
+			tournament.status === "active" &&
+			totalMatches > 0 &&
+			completionPercentage === 100 &&
+			completedMatches === totalMatches
+		) {
+			// All matches are completed, update tournament status
+			updateTournament({
+				tournamentId: tournamentId as Id<"tournaments">,
+				status: "completed",
+			}).catch((error) => {
+				console.error("Failed to auto-complete tournament:", error);
+			});
+		}
+	}, [tournament, totalMatches, completedMatches, completionPercentage, tournamentId, updateTournament]);
+
+	// Early returns AFTER all hooks are called
 	if (tournament === undefined) {
 		return (
 			<SafeAreaView className="flex-1" style={{ backgroundColor: themeColorBackground }}>
@@ -222,16 +262,6 @@ export default function TournamentDetailScreen() {
 			</SafeAreaView>
 		);
 	}
-
-	// Calculate match statistics
-	const allMatches = matches || [];
-	const completedMatches = allMatches.filter(m => m.status === "completed").length;
-	const inProgressMatches = allMatches.filter(m => m.status === "in_progress").length;
-	const upcomingMatches = allMatches.filter(m => m.status === "pending").length;
-	const totalMatches = allMatches.length;
-	const completionPercentage = totalMatches > 0 
-		? Math.round((completedMatches / totalMatches) * 100) 
-		: 0;
 
 	const statusProps = getStatusBadgeProps(tournament.status as TournamentStatus);
 
@@ -308,7 +338,7 @@ export default function TournamentDetailScreen() {
 						</View>
 
 						{/* Start Tournament Button */}
-						{tournament.status === "upcoming" && (
+						{tournament.status === "upcoming" && completionPercentage < 100 && (
 							<Pressable
 								onPress={handleStartTournament}
 								className="p-4 rounded-lg mb-4 flex-row items-center justify-center bg-yellow-500"
@@ -1289,16 +1319,209 @@ export default function TournamentDetailScreen() {
 				);
 
 			case "bracket":
-			case "results":
 				return (
-					<View className="px-4 py-4">
-						<View className="py-16 items-center">
-							<Ionicons name="git-network-outline" size={48} color={withOpacity(themeColorForeground, opacity.OPACITY_40)} />
-							<Text className="text-sm mt-4 text-center" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
-								{viewMode === "bracket" ? "Bracket view coming soon" : "Results view coming soon"}
-							</Text>
-						</View>
+					<View style={{ flex: 1 }}>
+						<TournamentBracket
+							matches={matches}
+							tournamentType={tournament?.type || "single"}
+							tournamentId={tournamentId as Id<"tournaments">}
+						/>
 					</View>
+				);
+
+			case "results":
+				const completedMatchesForResults = allMatches.filter((m: any) => {
+					if (m.status !== "completed") return false;
+					// TBD vs TBD matches (no players) are complete if status is completed
+					if (!m.player1Id && !m.player2Id) return true;
+					// Regular matches need a winnerId
+					return !!m.winnerId;
+				}).sort((a: any, b: any) => {
+					const timeA = a.completedAt || 0;
+					const timeB = b.completedAt || 0;
+					return timeB - timeA;
+				});
+
+				// Calculate player results
+				const playerResultsMap = new Map<Id<"players">, { name: string; wins: number; losses: number; finalRound: number }>();
+				completedMatchesForResults.forEach((match: any) => {
+					if (match.player1Id) {
+						const existing = playerResultsMap.get(match.player1Id) || {
+							name: match.player1?.name || "Unknown",
+							wins: 0,
+							losses: 0,
+							finalRound: 0,
+						};
+						existing.wins += match.winnerId === match.player1Id ? 1 : 0;
+						existing.losses += match.winnerId !== match.player1Id && match.winnerId ? 1 : 0;
+						existing.finalRound = Math.max(existing.finalRound, match.round);
+						playerResultsMap.set(match.player1Id, existing);
+					}
+					if (match.player2Id) {
+						const existing = playerResultsMap.get(match.player2Id) || {
+							name: match.player2?.name || "Unknown",
+							wins: 0,
+							losses: 0,
+							finalRound: 0,
+						};
+						existing.wins += match.winnerId === match.player2Id ? 1 : 0;
+						existing.losses += match.winnerId !== match.player2Id && match.winnerId ? 1 : 0;
+						existing.finalRound = Math.max(existing.finalRound, match.round);
+						playerResultsMap.set(match.player2Id, existing);
+					}
+				});
+
+				const playerResults = Array.from(playerResultsMap.values()).sort((a, b) => {
+					if (a.finalRound !== b.finalRound) return b.finalRound - a.finalRound;
+					const aWinRate = (a.wins + a.losses) > 0 ? a.wins / (a.wins + a.losses) : 0;
+					const bWinRate = (b.wins + b.losses) > 0 ? b.wins / (b.wins + b.losses) : 0;
+					if (aWinRate !== bWinRate) return bWinRate - aWinRate;
+					return b.wins - a.wins;
+				});
+
+				return (
+					<ScrollView className="flex-1" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+						<View className="px-4 py-4">
+							{/* Stats Summary */}
+							<View className="flex-row flex-wrap gap-4 mb-4">
+								<View className="flex-1 min-w-[45%] p-4 rounded-lg" style={{ backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10) }}>
+									<Text className="text-2xl font-bold" style={{ color: themeColorForeground }}>
+										{completedMatchesForResults.length}
+									</Text>
+									<Text className="text-sm mt-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+										Matches Completed
+									</Text>
+								</View>
+								<View className="flex-1 min-w-[45%] p-4 rounded-lg" style={{ backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10) }}>
+									<Text className="text-2xl font-bold" style={{ color: themeColorForeground }}>
+										{playerResults.length}
+									</Text>
+									<Text className="text-sm mt-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+										Players
+									</Text>
+								</View>
+								<View className="flex-1 min-w-[45%] p-4 rounded-lg" style={{ backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10) }}>
+									<Text className="text-2xl font-bold" style={{ color: themeColorForeground }}>
+										{playerResults.length > 0 ? playerResults[0].name : "-"}
+									</Text>
+									<Text className="text-sm mt-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+										Champion
+									</Text>
+								</View>
+							</View>
+
+							{/* Standings */}
+							<View className="mb-6">
+								<Text className="text-lg font-semibold mb-4" style={{ color: themeColorForeground }}>
+									Standings
+								</Text>
+								{playerResults.length > 0 ? (
+									<View className="space-y-2">
+										{playerResults.map((result, index) => (
+											<View
+												key={index}
+												className="p-4 rounded-lg flex-row items-center"
+												style={{
+													backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10),
+													borderWidth: 1,
+													borderColor: withOpacity(themeColorForeground, opacity.OPACITY_20),
+												}}
+											>
+												<View className="w-8 items-center mr-3">
+													{index === 0 && <Ionicons name="trophy" size={20} color="#F59E0B" />}
+													{index === 1 && <Ionicons name="medal" size={20} color="#9CA3AF" />}
+													{index === 2 && <Ionicons name="star" size={20} color="#D97706" />}
+													<Text className="text-sm font-semibold mt-1" style={{ color: themeColorForeground }}>
+														{index + 1}
+													</Text>
+												</View>
+												<View className="flex-1">
+													<Text className="text-base font-semibold" style={{ color: themeColorForeground }}>
+														{result.name}
+													</Text>
+													<Text className="text-xs mt-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+														Round {result.finalRound}
+													</Text>
+												</View>
+												<View className="items-end">
+													<Text className="text-sm font-semibold" style={{ color: themeColorForeground }}>
+														{result.wins}W - {result.losses}L
+													</Text>
+													<Text className="text-xs mt-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+														{result.wins + result.losses > 0 ? Math.round((result.wins / (result.wins + result.losses)) * 100) : 0}%
+													</Text>
+												</View>
+											</View>
+										))}
+									</View>
+								) : (
+									<View className="py-8 items-center">
+										<Text className="text-sm" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+											No results yet
+										</Text>
+									</View>
+								)}
+							</View>
+
+							{/* Recent Matches */}
+							<View>
+								<Text className="text-lg font-semibold mb-4" style={{ color: themeColorForeground }}>
+									Recent Matches
+								</Text>
+								{completedMatchesForResults.length > 0 ? (
+									<View className="space-y-2">
+										{completedMatchesForResults.slice(0, 20).map((match: any) => {
+											const bracketLabel = match.bracketType === "loser" ? "L" : 
+												match.bracketType === "grand_final" ? "GF" : "W";
+											const matchLabel = bracketLabel 
+												? `${bracketLabel}${match.round}-${match.bracketPosition + 1}`
+												: `R${match.round}-${match.bracketPosition + 1}`;
+
+											return (
+												<View
+													key={match._id}
+													className="p-4 rounded-lg"
+													style={{
+														backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10),
+														borderWidth: 1,
+														borderColor: withOpacity(themeColorForeground, opacity.OPACITY_20),
+													}}
+												>
+													<View className="flex-row items-center justify-between mb-2">
+														<Text className="text-xs uppercase" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+															Round {match.round}
+														</Text>
+														<Text className="text-xs font-medium" style={{ color: themeColorForeground }}>
+															{matchLabel}
+														</Text>
+													</View>
+													<View className="space-y-1">
+														<Text className={`text-sm ${match.winnerId === match.player1Id ? "font-bold" : ""}`} style={{ color: match.winnerId === match.player1Id ? "#10B981" : themeColorForeground }}>
+															{match.player1?.name || "TBD"} {match.player1Score}
+														</Text>
+														<Text className={`text-sm ${match.winnerId === match.player2Id ? "font-bold" : ""}`} style={{ color: match.winnerId === match.player2Id ? "#10B981" : themeColorForeground }}>
+															{match.player2?.name || "TBD"} {match.player2Score}
+														</Text>
+													</View>
+													{match.completedAt && (
+														<Text className="text-xs mt-2" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+															{formatDate(match.completedAt)}
+														</Text>
+													)}
+												</View>
+											);
+										})}
+									</View>
+								) : (
+									<View className="py-8 items-center">
+										<Text className="text-sm" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+											No completed matches yet
+										</Text>
+									</View>
+								)}
+							</View>
+						</View>
+					</ScrollView>
 				);
 
 			case "tables":

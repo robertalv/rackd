@@ -1,0 +1,14 @@
+name = "rackd-api-proxy"
+main = "api-proxy.ts"
+compatibility_date = "2024-01-01"
+
+[env.production]
+routes = [
+  { pattern = "api-proxy.rackd.app/*", zone_name = "rackd.app" }
+]
+
+# Optional: Add KV namespace for persistent caching
+# [[kv_namespaces]]
+# binding = "CACHE_KV"
+# id = "your-kv-namespace-id"
+

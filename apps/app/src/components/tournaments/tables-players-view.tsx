@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Button } from "@rackd/ui/components/button";
 import { Input } from "@rackd/ui/components/input";
-import { Search, Star } from "lucide-react";
+import { Search, Star, UserPlus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 interface TablesPlayersViewProps {
@@ -19,6 +19,28 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 	const [searchQuery, setSearchQuery] = useState("");
 
 	const registrations = useQuery(api.tournaments.getRegistrations, { tournamentId });
+	const matches = useQuery(api.matches.getByTournament, { tournamentId });
+	const addLatePlayerToBracket = useMutation(api.matches.addLatePlayerToBracket);
+
+	// Check which players are already in the bracket
+	const bracketExists = matches && matches.length > 0;
+	const playersInBracket = new Set(
+		matches?.flatMap(m => [m.player1Id, m.player2Id].filter(Boolean)) || []
+	);
+
+	const isPlayerInBracket = (playerId: Id<"players"> | undefined) => {
+		return playerId ? playersInBracket.has(playerId) : false;
+	};
+
+	const handleAddToBracket = async (playerId: Id<"players">) => {
+		try {
+			await addLatePlayerToBracket({ tournamentId, playerId });
+			alert("Player added to bracket successfully!");
+		} catch (error: any) {
+			console.error("Failed to add player to bracket:", error);
+			alert(`Failed to add player to bracket: ${error?.message || "Unknown error"}`);
+		}
+	};
 
 	// Calculate player statistics
 	const totalPlayers = registrations?.length || 0;
@@ -82,6 +104,11 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 
 								const flagEmoji = getFlagEmoji(playerCountry);
 
+								const canAddToBracket = 
+									registration.checkedIn && 
+									bracketExists && 
+									!isPlayerInBracket(registration.player?._id);
+
 								return (
 									<div
 										key={registration._id}
@@ -94,9 +121,21 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 												<span className="text-lg shrink-0">{flagEmoji}</span>
 											)}
 										</div>
-										<Button variant="outline" size="sm" className="ml-2 shrink-0">
-											<Star className="h-4 w-4" />
-										</Button>
+										<div className="flex items-center gap-2 shrink-0">
+											{canAddToBracket && (
+												<Button 
+													variant="secondary" 
+													size="sm"
+													onClick={() => registration.player?._id && handleAddToBracket(registration.player._id)}
+													title="Add player to bracket"
+												>
+													<UserPlus className="h-4 w-4" />
+												</Button>
+											)}
+											<Button variant="outline" size="sm">
+												<Star className="h-4 w-4" />
+											</Button>
+										</div>
 									</div>
 								);
 							})}
@@ -117,7 +156,7 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 							if (onManagePlayers) {
 								onManagePlayers();
 							} else {
-								navigate({ to: "/tournaments/$id/players", params: { id: tournamentId } });
+								navigate({ to: "/tournaments/$id", params: { id: tournamentId } });
 							}
 						}}
 					>

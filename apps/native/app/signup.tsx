@@ -357,11 +357,10 @@ export default function SignupPage() {
 						style={{ paddingTop: insets.top + 24 }}
 					>
 						<Image
-							source={require("@/assets/images/icon.png")}
+							source={require("../assets/images/icon.png")}
 							style={{
 								width: 80,
 								height: 80,
-								tintColor: iconColor,
 							}}
 							resizeMode="contain"
 						/>

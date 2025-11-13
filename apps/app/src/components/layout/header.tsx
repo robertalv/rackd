@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@rackd/ui/components/button";
-import { Separator } from "@rackd/ui/components/separator";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { calculateProfileCompletion } from "@/lib/profile-utils";
@@ -18,9 +17,7 @@ import {
     User, 
     Settings, 
     CreditCard, 
-    KeyRound, 
     LogOut, 
-    LayoutDashboard, 
     Trophy,
     MapPin
   } from "lucide-react";
@@ -222,31 +219,27 @@ export function Header() {
               <Trophy className="h-4 w-4" />
               Tournaments
             </div>
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            <div 
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
+              onClick={() => {
+                navigate({ to: "/players" });
+                setSidebarOpen(false);
+              }}
+            >
               <User className="h-4 w-4" />
-              Players (Coming Soon)
+              Players
             </div>
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            <div 
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors cursor-pointer"
+              onClick={() => {
+                navigate({ to: "/venues" });
+                setSidebarOpen(false);
+              }}
+            >
               <MapPin className="h-4 w-4" />
-              Venues (Coming Soon)
+              Venues
             </div>
           </nav>
-
-          <Separator />
-
-          {/* User Section */}
-          {currentUser && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Settings (Coming Soon)
-              </div>
-              <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">
-                <CreditCard className="h-4 w-4" />
-                Billing (Coming Soon)
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>

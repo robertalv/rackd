@@ -231,7 +231,7 @@ export function TournamentFlyerUpload({
       {!hasFiles && (
         <Dropzone
           src={uploadedFiles}
-          accept={{ "image/*": [".png", ".jpg", ".jpeg", ".gif"] }}
+          accept={{ "image/*": [".png", ".jpg", ".jpeg", ".gif", ".heic", ".heif"] }}
           maxSize={5 * 1024 * 1024} // 5MB
           maxFiles={1}
           onDrop={handleDrop}

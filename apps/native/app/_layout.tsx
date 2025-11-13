@@ -12,6 +12,22 @@ import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { useThemeColor } from "heroui-native";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://20efd8f8c9a4a5623e7f015ab9b892d1@o4510354603835392.ingest.us.sentry.io/4510354606850048',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+  integrations: [Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL || "";
 const convex = new ConvexReactClient(convexUrl, {
@@ -79,7 +95,7 @@ function StackLayout() {
 	);
 }
 
-export default function Layout() {
+export default Sentry.wrap(function Layout() {
 	return (
 		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
 			<GestureHandlerRootView style={{ flex: 1 }}>
@@ -95,4 +111,4 @@ export default function Layout() {
 			</GestureHandlerRootView>
 		</ConvexBetterAuthProvider>
 	);
-}
+});

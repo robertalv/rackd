@@ -2,6 +2,7 @@ import { View, Text, Pressable, Image } from "react-native";
 import { useThemeColor } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
 import { opacity, withOpacity } from "@/lib/opacity";
+import * as Sentry from '@sentry/react-native';
 
 interface FeedHeaderProps {
 	onSearch?: () => void;
@@ -37,7 +38,7 @@ export function FeedHeader({ onSearch, onCreatePost }: FeedHeaderProps) {
 					}}
 					resizeMode="contain"
 				/>	
-				<Text className="text-4xl font-bold tracking-tighter font-mono" style={{ color: themeColorForeground }}>
+				<Text className="text-4xl font-bold tracking-tighter" style={{ color: themeColorForeground }}>
 					rackd
 				</Text>
 			</View>

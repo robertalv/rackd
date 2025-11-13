@@ -3,11 +3,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useThemeColor } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
 import { opacity, withOpacity } from "@/lib/opacity";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { PostCard } from "@/components/post-card";
+import { useRecentSearches } from "@/hooks/use-recent-searches";
 
 export default function DiscoverScreen() {
 	const params = useLocalSearchParams<{ tab?: string; query?: string }>();
@@ -20,6 +21,14 @@ export default function DiscoverScreen() {
 	const themeColorBackground = useThemeColor("background") || "#FFFFFF";
 	const accentColor = useThemeColor("accent") || "#007AFF";
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
+	const searchInputRef = useRef<TextInput>(null);
+	const { recentSearches, addSearch, removeSearch, clearSearches } = useRecentSearches(activeTab);
+	const lastSavedQueryRef = useRef<string>("");
+
+	// Reset last saved query when tab changes
+	useEffect(() => {
+		lastSavedQueryRef.current = "";
+	}, [activeTab]);
 
 	// Query data based on active tab
 	const playersData = useQuery(
@@ -54,6 +63,99 @@ export default function DiscoverScreen() {
 		}
 	}, [params.tab, params.query]);
 
+	// Save search when query changes and is not empty
+	useEffect(() => {
+		if (searchQuery.trim().length > 0 && searchQuery !== lastSavedQueryRef.current) {
+			// Debounce: only save after user stops typing for a moment
+			const timeoutId = setTimeout(() => {
+				addSearch(searchQuery);
+				lastSavedQueryRef.current = searchQuery;
+			}, 1000);
+
+			return () => clearTimeout(timeoutId);
+		}
+	}, [searchQuery, addSearch]);
+
+	const handleRecentSearchPress = (query: string) => {
+		setSearchQuery(query);
+		setIsSearchFocused(false);
+		searchInputRef.current?.blur();
+	};
+
+	const renderRecentSearches = () => {
+		if (!isSearchFocused || searchQuery.length > 0 || recentSearches.length === 0) {
+			return null;
+		}
+
+		return (
+			<View className="px-4 py-2">
+				<View className="flex-row items-center justify-between mb-3">
+					<Text className="text-sm font-semibold" style={{ color: themeColorForeground }}>
+						Recent Searches
+					</Text>
+					<Pressable
+						onPress={clearSearches}
+						style={({ pressed }) => ({
+							opacity: pressed ? 0.6 : 1,
+						})}
+					>
+						<Text className="text-xs" style={{ color: accentColor }}>
+							Clear All
+						</Text>
+					</Pressable>
+				</View>
+				{recentSearches.map((query, index) => (
+					<Pressable
+						key={`${query}-${index}`}
+						onPress={() => handleRecentSearchPress(query)}
+						style={({ pressed }) => ({
+							opacity: pressed ? 0.7 : 1,
+						})}
+					>
+						<View
+							className="flex-row items-center justify-between py-3 px-3 rounded-lg mb-2"
+							style={{
+								backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10),
+							}}
+						>
+							<View className="flex-row items-center flex-1">
+								<Ionicons
+									name="time-outline"
+									size={18}
+									color={withOpacity(themeColorForeground, opacity.OPACITY_60)}
+									style={{ marginRight: 10 }}
+								/>
+								<Text
+									className="flex-1"
+									style={{ color: themeColorForeground, fontSize: 14 }}
+									numberOfLines={1}
+								>
+									{query}
+								</Text>
+							</View>
+							<Pressable
+								onPress={(e) => {
+									e.stopPropagation();
+									removeSearch(query);
+								}}
+								style={({ pressed }) => ({
+									opacity: pressed ? 0.6 : 1,
+									marginLeft: 8,
+								})}
+							>
+								<Ionicons
+									name="close-circle"
+									size={20}
+									color={withOpacity(themeColorForeground, opacity.OPACITY_40)}
+								/>
+							</Pressable>
+						</View>
+					</Pressable>
+				))}
+			</View>
+		);
+	};
+
 	const renderContent = () => {
 		if (activeTab === "players") {
 			if (playersData === undefined) {
@@ -85,39 +187,51 @@ export default function DiscoverScreen() {
 			return (
 				<View className="p-4">
 					{playersData.map((player: any) => (
-						<View key={player._id} className="mb-4 p-4 rounded-lg border" style={{ 
-							backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10),
-							borderColor: withOpacity(themeColorForeground, opacity.OPACITY_20),
-						}}>
-							<Text className="font-semibold text-lg" style={{ color: themeColorForeground }}>
-								{player.name}
-							</Text>
-							{player.username && (
-								<Text className="text-sm mb-2" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
-									@{player.username}
+						<Pressable
+							key={player._id}
+							onPress={() => {
+								if (player.username) {
+									router.push(`/(drawer)/(tabs)/${player.username}`);
+								}
+							}}
+							style={({ pressed }) => ({
+								opacity: pressed ? 0.7 : 1,
+							})}
+						>
+							<View className="mb-4 p-4 rounded-lg border" style={{ 
+								backgroundColor: withOpacity(themeColorForeground, opacity.OPACITY_10),
+								borderColor: withOpacity(themeColorForeground, opacity.OPACITY_20),
+							}}>
+								<Text className="font-semibold text-lg" style={{ color: themeColorForeground }}>
+									{player.name}
 								</Text>
-							)}
-							{player.city && (
-								<View className="flex-row items-center mt-2">
-									<Ionicons name="location-outline" size={16} color={withOpacity(themeColorForeground, opacity.OPACITY_60)} />
-									<Text className="text-sm ml-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
-										{player.city}
+								{player.username && (
+									<Text className="text-sm mb-2" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+										@{player.username}
 									</Text>
-								</View>
-							)}
-							{player.fargoRating && (
-								<View className="flex-row items-center mt-2">
-									<Text className="font-bold text-lg" style={{ color: accentColor }}>
-										{player.fargoRating}
-									</Text>
-									{player.fargoRobustness && (
-										<Text className="text-xs ml-2" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
-											R: {player.fargoRobustness}
+								)}
+								{player.city && (
+									<View className="flex-row items-center mt-2">
+										<Ionicons name="location-outline" size={16} color={withOpacity(themeColorForeground, opacity.OPACITY_60)} />
+										<Text className="text-sm ml-1" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+											{player.city}
 										</Text>
-									)}
-								</View>
-							)}
-						</View>
+									</View>
+								)}
+								{player.fargoRating && (
+									<View className="flex-row items-center mt-2">
+										<Text className="font-bold text-lg" style={{ color: accentColor }}>
+											{player.fargoRating}
+										</Text>
+										{player.fargoRobustness && (
+											<Text className="text-xs ml-2" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_60) }}>
+												R: {player.fargoRobustness}
+											</Text>
+										)}
+									</View>
+								)}
+							</View>
+						</Pressable>
 					))}
 				</View>
 			);
@@ -259,18 +373,28 @@ export default function DiscoverScreen() {
 							style={{ marginRight: 8 }}
 						/>
 						<TextInput
+							ref={searchInputRef}
 							placeholder="Search..."
 							placeholderTextColor={withOpacity(themeColorForeground, opacity.OPACITY_60)}
 							value={searchQuery}
 							onChangeText={setSearchQuery}
 							onFocus={() => setIsSearchFocused(true)}
-							onBlur={() => setIsSearchFocused(false)}
+							onBlur={() => {
+								// Delay blur to allow recent search press to register
+								setTimeout(() => setIsSearchFocused(false), 200);
+							}}
 							style={{
 								flex: 1,
 								color: themeColorForeground,
 								fontSize: 14,
 							}}
 							returnKeyType="search"
+							onSubmitEditing={() => {
+								if (searchQuery.trim().length > 0) {
+									addSearch(searchQuery);
+									setIsSearchFocused(false);
+								}
+							}}
 						/>
 					</View>
 				</View>
@@ -341,6 +465,9 @@ export default function DiscoverScreen() {
 					</Pressable>
 				</View>
             </View>
+
+			{/* Recent Searches */}
+			{renderRecentSearches()}
 
 			{/* Content */}
 			<ScrollView

@@ -4,10 +4,10 @@ import { routerWithQueryClient } from "@tanstack/react-router-with-query";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { routeTree } from "./routeTree.gen";
-import '@rackd/ui/globals.css';
+import Loader from "@/components/loader";
 
 export function getRouter() {
-	const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!;
+	const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!;
 	if (!CONVEX_URL) {
 		console.error("missing envar VITE_CONVEX_URL");
 	}
@@ -31,7 +31,7 @@ export function getRouter() {
 		createTanStackRouter({
 			routeTree,
 			defaultPreload: "intent",
-			defaultPendingComponent: () => <span>Loading...</span>,
+			defaultPendingComponent: () => <Loader />,
 			defaultNotFoundComponent: () => <div>Not Found</div>,
 			context: { queryClient, convexClient: convex, convexQueryClient },
 			Wrap: ({ children }) => (

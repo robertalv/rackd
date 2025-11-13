@@ -9,68 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as IndexRouteImport } from './routes/index'
 
-const UnauthenticatedLoginRoute = UnauthenticatedLoginRouteImport.update({
-  id: '/_unauthenticated/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/login': typeof UnauthenticatedLoginRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/': typeof IndexRoute
 }
 export interface FileRoutesByTo {
-  '/login': typeof UnauthenticatedLoginRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/': typeof IndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/': typeof IndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login' | '/api/auth/$'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/api/auth/$'
-  id: '__root__' | '/_unauthenticated/login' | '/api/auth/$'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  UnauthenticatedLoginRoute: typeof UnauthenticatedLoginRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  IndexRoute: typeof IndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_unauthenticated/login': {
-      id: '/_unauthenticated/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof UnauthenticatedLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  UnauthenticatedLoginRoute: UnauthenticatedLoginRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  IndexRoute: IndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

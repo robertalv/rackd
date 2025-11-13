@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
@@ -11,6 +11,10 @@ import { PlayerRegistration } from "@/components/tournaments/player-registration
 import { PayoutCalculation } from "@/components/tournaments/payout-calculation";
 import { AddManagerDialog } from "@/components/tournaments/add-manager-dialog";
 import { TournamentSettings } from "@/components/tournaments/tournament-settings";
+import { TournamentBracket } from "@/components/tournaments/tournament-bracket";
+import { MatchesTable } from "@/components/tournaments/matches-table";
+import { ResultsTable } from "@/components/tournaments/results-table";
+import { PlayerStats } from "@/components/tournaments/player-stats";
 import { Button } from "@rackd/ui/components/button";
 import { NavigationButton } from "@/components/navigation-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
@@ -32,7 +36,8 @@ import {
   Play,
   ChevronRight,
   Plus,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 
 type ViewMode = "dashboard" | "bracket" | "tables" | "players" | "matches" | "results" | "stats" | "payouts" | "settings";
@@ -58,24 +63,53 @@ function TournamentDetailPage() {
   );
   const managers = useQuery(api.tournaments.getManagers, { tournamentId });
   const generateBracket = useMutation(api.matches.generateBracket);
+  const regenerateBracket = useMutation(api.matches.regenerateBracket);
   const removeManager = useMutation(api.tournaments.removeManager);
-
-  console.log("currentUser", currentUser);
+  const updateTournament = useMutation(api.tournaments.update);
 
   const currentUserId = currentUser?.convexUser?._id as unknown as Id<"users"> | undefined;
-  const isOrganizer = tournament && currentUserId && tournament.organizerId === currentUserId as Id<"users">;
-
-  if (!tournament) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>;
-  }
-
-  // Calculate completion percentage
+  
+  // Calculate completion percentage (before early return)
+  // TBD vs TBD matches are considered complete if status is "completed" (even without winnerId)
   const allMatches = matches || [];
-  const completedMatches = allMatches.filter(m => m.status === "completed").length;
+  const completedMatches = allMatches.filter(m => {
+    if (m.status !== "completed") return false;
+    // TBD vs TBD matches (no players) are complete if status is completed
+    if (!m.player1Id && !m.player2Id) return true;
+    // Regular matches need a winnerId
+    return !!m.winnerId;
+  }).length;
   const totalMatches = allMatches.length;
   const completionPercentage = totalMatches > 0 
     ? Math.round((completedMatches / totalMatches) * 100) 
     : 0;
+
+  // Automatically mark tournament as completed when all matches are done
+  // This hook MUST be called before any early returns
+  useEffect(() => {
+    if (
+      tournament &&
+      tournament.status === "active" &&
+      totalMatches > 0 &&
+      completionPercentage === 100 &&
+      completedMatches === totalMatches
+    ) {
+      // All matches are completed, update tournament status
+      updateTournament({
+        tournamentId,
+        status: "completed",
+      }).catch((error) => {
+        console.error("Failed to auto-complete tournament:", error);
+      });
+    }
+  }, [tournament, totalMatches, completedMatches, completionPercentage, tournamentId, updateTournament]);
+
+  // Early return AFTER all hooks are called
+  if (!tournament) {
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
+  }
+
+  const isOrganizer = tournament && currentUserId && tournament.organizerId === currentUserId as Id<"users">;
 
   const handleStartTournament = async () => {
     try {
@@ -84,6 +118,20 @@ function TournamentDetailPage() {
     } catch (error) {
       console.error("Error starting tournament:", error);
       alert("Failed to start tournament. Make sure at least 2 players are checked in.");
+    }
+  };
+
+  const handleRegenerateBracket = async () => {
+    if (!confirm("Regenerate bracket? This will preserve completed matches but recreate the bracket structure. Continue?")) {
+      return;
+    }
+
+    try {
+      await regenerateBracket({ tournamentId });
+      alert("Bracket regenerated successfully!");
+    } catch (error) {
+      console.error("Error regenerating bracket:", error);
+      alert(`Failed to regenerate bracket: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -167,7 +215,7 @@ function TournamentDetailPage() {
           </Card>
 
           {/* Start Tournament Button */}
-          {tournament.status === "upcoming" && (
+          {tournament.status === "upcoming" && completionPercentage < 100 && (
             <Button 
               onClick={handleStartTournament}
               className="w-full"
@@ -320,7 +368,32 @@ function TournamentDetailPage() {
       case "dashboard":
         return <TournamentDashboard tournamentId={tournamentId} />;
       case "bracket":
-        return <div className="flex items-center justify-center h-full">Bracket view coming soon...</div>;
+        return (
+          <div className="h-full flex flex-col">
+            {/* Bracket Header with Regenerate Button */}
+            {matches && matches.length > 0 && isOrganizer && (
+              <div className="border-b px-4 py-2 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">Tournament Bracket</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRegenerateBracket}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Regenerate Bracket
+                </Button>
+              </div>
+            )}
+            <div className="flex-1 overflow-hidden">
+              <TournamentBracket 
+                matches={matches} 
+                tournamentType={tournament.type}
+                tournamentId={tournamentId}
+              />
+            </div>
+          </div>
+        );
       case "tables":
         return <TablesManagement tournamentId={tournamentId} />;
       case "players":
@@ -330,11 +403,23 @@ function TournamentDetailPage() {
           </div>
         );
       case "matches":
-        return <div className="flex items-center justify-center h-full">Matches view coming soon...</div>;
+        return (
+          <div className="h-full overflow-hidden">
+            <MatchesTable tournamentId={tournamentId} matches={matches} />
+          </div>
+        );
       case "results":
-        return <div className="flex items-center justify-center h-full">Results view coming soon...</div>;
+        return (
+          <div className="h-full overflow-hidden">
+            <ResultsTable tournamentId={tournamentId} matches={matches} />
+          </div>
+        );
       case "stats":
-        return <div className="flex items-center justify-center h-full">Stats view coming soon...</div>;
+        return (
+          <div className="h-full overflow-hidden">
+            <PlayerStats tournamentId={tournamentId} matches={matches} />
+          </div>
+        );
       case "payouts":
         return (
           <div className="h-full overflow-auto p-6">

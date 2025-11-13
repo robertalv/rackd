@@ -540,7 +540,7 @@ export const getRecentUsers = query({
   },
 });
 
-// Get all players with their linked user data for discovery
+// Get all players from the players table for discovery
 export const getPlayersForDiscovery = query({
   args: { 
     query: v.optional(v.string()),
@@ -554,29 +554,40 @@ export const getPlayersForDiscovery = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
         
-    // Get all players who have linked user accounts
-    const players = await ctx.db
+    // Get all players from the players table (no userId requirement)
+    let players = await ctx.db
       .query("players")
-      .filter(q => q.neq(q.field("userId"), undefined))
-      .take(limit * 2); // Take more to filter later
+      .take(limit * 3); // Take more to filter later
         
-    // Get the linked user data for each player
-    const playersWithUsers = await Promise.all(
+    // Optionally get user data for players that have linked accounts
+    const playersWithOptionalUsers = await Promise.all(
       players.map(async (player) => {
-        if (!player.userId) return null;
-        
-        const user = await ctx.db.get(player.userId);
-        if (!user) return null;
-        
-        // Return player and user data
+        let user = null;
         let imageUrl: string | undefined = undefined;
-        if (user.image) {
-          imageUrl = await getUserImageUrl(ctx, user.image);
+        let username: string | undefined = undefined;
+        let displayName: string = player.name;
+        let followerCount = 0;
+        let postCount = 0;
+        
+        // If player has a userId, try to get user data
+        if (player.userId) {
+          user = await ctx.db.get(player.userId);
+          if (user) {
+            if (user.image) {
+              imageUrl = await getUserImageUrl(ctx, user.image);
+            }
+            username = user.username || undefined;
+            // Always use player.name as the primary display name
+            displayName = player.name;
+            followerCount = user.followerCount || 0;
+            postCount = user.postCount || 0;
+          }
         }
         
-        const result = {
+        return {
           _id: player._id,
           name: player.name,
+          displayName: player.name, // Always use player's actual name
           fargoRating: player.fargoRating,
           fargoRobustness: player.fargoRobustness,
           fargoMembershipId: player.fargoMembershipId,
@@ -585,19 +596,17 @@ export const getPlayersForDiscovery = query({
           isVerified: player.isVerified,
           bio: player.bio,
           avatarUrl: player.avatarUrl,
-          userId: user._id,
-          username: user.username || undefined,
+          userId: user?._id || undefined,
+          username: username,
           userImageUrl: imageUrl,
+          followerCount: followerCount,
+          postCount: postCount,
         };
-        
-        return result;
       })
     );
     
-    // Filter out null results and apply search query if provided
-    let filteredPlayers = playersWithUsers.filter((player): player is NonNullable<typeof player> => player !== null);
-  
     // Apply search query filter
+    let filteredPlayers = playersWithOptionalUsers;
     if (args.query && args.query.length > 0) {
       const searchTerm = args.query.toLowerCase();
       filteredPlayers = filteredPlayers.filter(player => 
@@ -619,7 +628,6 @@ export const getPlayersForDiscovery = query({
     
     // Apply Fargo rating filter
     if (args.minFargoRating || args.maxFargoRating) {
-      const beforeCount = filteredPlayers.length;
       filteredPlayers = filteredPlayers.filter(player => {
         if (!player.fargoRating) {
           return false;
@@ -629,19 +637,19 @@ export const getPlayersForDiscovery = query({
         const meetsMin = !args.minFargoRating || rating >= args.minFargoRating;
         const meetsMax = !args.maxFargoRating || rating <= args.maxFargoRating;
         
-        const matches = meetsMin && meetsMax;
-        return matches;
+        return meetsMin && meetsMax;
       });
     }
     
-    // Sort by Fargo rating (highest first)
+    // Sort by Fargo rating (highest first), then by name
     filteredPlayers.sort((a, b) => {
       if (a.fargoRating && b.fargoRating) {
         return b.fargoRating - a.fargoRating;
       }
       if (a.fargoRating && !b.fargoRating) return -1;
       if (!a.fargoRating && b.fargoRating) return 1;
-      return 0;
+      // If no rating, sort by name
+      return a.name.localeCompare(b.name);
     });
     
     return filteredPlayers.slice(0, limit);

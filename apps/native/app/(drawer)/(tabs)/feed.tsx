@@ -47,9 +47,10 @@ export default function FeedScreen() {
 
 	const handleCreatePostOption = useCallback(() => {
 		bottomSheetModalRef.current?.dismiss();
-		// TODO: Navigate to post composer screen
-		console.log("Create post");
-	}, []);
+		router.push({
+			pathname: "/(drawer)/(tabs)/post/new" as any,
+		});
+	}, [router]);
 
 	const handleCreateTournamentOption = useCallback(() => {
 		bottomSheetModalRef.current?.dismiss();
@@ -132,7 +133,7 @@ export default function FeedScreen() {
 					contentContainerStyle={{ 
 						// paddingHorizontal: 16, 
 						// paddingTop: 12,
-						paddingBottom: 0
+						paddingBottom: insets.bottom + 25
 					}}
 					refreshControl={
 						<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />

@@ -1,8 +1,9 @@
 import { View, Image, ActivityIndicator } from "react-native";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { useThemeColor } from "heroui-native";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { useState, useEffect } from "react";
 
 interface PostImageProps {
 	storageId: Id<"_storage"> | string;
@@ -22,9 +23,40 @@ export function PostImage({
 }: PostImageProps) {
 	const themeColorBackground = useThemeColor("background");
 	const themeColorForeground = useThemeColor("foreground");
-	const imageUrl = useQuery(api.files.getFileUrl, {
+	const standardUrl = useQuery(api.files.getFileUrl, {
 		storageId: storageId as Id<"_storage">,
 	});
+	const getFileUrlWithConversion = useAction(api.files.getFileUrlWithHeicConversion);
+	const [imageUrl, setImageUrl] = useState<string | null>(null);
+	const [isConverting, setIsConverting] = useState(false);
+
+	// Automatically convert HEIC images on display
+	useEffect(() => {
+		if (standardUrl && !imageUrl && !isConverting) {
+			// Check if it might be HEIC
+			const mightBeHeic = standardUrl?.includes(".heic") || standardUrl?.includes(".heif");
+			
+			if (mightBeHeic) {
+				setIsConverting(true);
+				// Try to get converted URL
+				getFileUrlWithConversion({ storageId: storageId as Id<"_storage"> })
+					.then((convertedUrl) => {
+						setImageUrl(convertedUrl || standardUrl);
+						setIsConverting(false);
+					})
+					.catch(() => {
+						setImageUrl(standardUrl);
+						setIsConverting(false);
+					});
+			} else {
+				// Not HEIC, use standard URL
+				setImageUrl(standardUrl);
+			}
+		} else if (standardUrl && !imageUrl) {
+			// Fallback: use standard URL
+			setImageUrl(standardUrl);
+		}
+	}, [standardUrl, storageId, getFileUrlWithConversion, imageUrl, isConverting]);
 
 	if (!imageUrl) {
 		return (

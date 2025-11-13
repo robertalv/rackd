@@ -152,6 +152,7 @@ export const create = mutation({
     maxPlayers: v.optional(v.number()),
     entryFee: v.optional(v.number()),
     createPost: v.optional(v.boolean()),
+    turnstileToken: v.optional(v.string()),
     tables: v.optional(
       v.array(
         v.object({
@@ -204,6 +205,42 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Verify Turnstile token if provided
+    if (args.turnstileToken) {
+      const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+      if (secretKey) {
+        try {
+          const formData = new FormData();
+          formData.append("secret", secretKey);
+          formData.append("response", args.turnstileToken);
+
+          const response = await fetch(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Turnstile verification request failed");
+          }
+
+          const result = (await response.json()) as {
+            success: boolean;
+            error_codes?: string[];
+          };
+
+          if (!result.success || result.error_codes?.length) {
+            throw new Error(`Turnstile verification failed: ${result.error_codes?.join(", ") || "Unknown error"}`);
+          }
+        } catch (error) {
+          console.error("Turnstile verification failed:", error);
+          throw new Error("Verification failed. Please try again.");
+        }
+      }
+    }
 
     const tournamentId = await ctx.db.insert("tournaments", {
       name: args.name,
@@ -519,6 +556,13 @@ export const update = mutation({
     if (updates.status !== undefined) updateData.status = updates.status;
 
     await ctx.db.patch(args.tournamentId, updateData);
+
+    // If tournament is being marked as completed, calculate and store results for all registrations
+    if (updates.status === "completed" && tournament.status !== "completed") {
+      await ctx.scheduler.runAfter(0, internal.tournamentRegistrations.calculateTournamentResultsInternal, {
+        tournamentId: args.tournamentId,
+      });
+    }
   },
 });
 
@@ -1454,6 +1498,89 @@ export const activateTournament = internalMutation({
   },
 });
 
+// Internal mutation to check and complete tournament if all matches are done
+export const checkAndCompleteTournament = internalMutation({
+  args: {
+    tournamentId: v.id("tournaments"),
+  },
+  handler: async (ctx, args) => {
+    const tournament = await ctx.db.get(args.tournamentId);
+    if (!tournament) {
+      return;
+    }
+
+    // Only check if tournament is active (not already completed or draft)
+    if (tournament.status !== "active") {
+      return;
+    }
+
+    // Get all matches for this tournament
+    const allMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+
+    // If no matches exist, don't complete
+    if (allMatches.length === 0) {
+      return;
+    }
+
+    // First, mark any remaining TBD vs TBD matches as completed
+    const tbdMatches = allMatches.filter(
+      (match) => 
+        match.status !== "completed" && 
+        !match.player1Id && 
+        !match.player2Id
+    );
+    
+    for (const match of tbdMatches) {
+      await ctx.db.patch(match._id, {
+        status: "completed",
+        completedAt: Date.now(),
+        // No winnerId since both players are TBD
+        player1Score: 0,
+        player2Score: 0,
+      });
+    }
+
+    // Refresh matches after updating TBD matches
+    const updatedMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+
+    // Check if all matches are completed
+    // TBD vs TBD matches are considered complete if status is "completed" (even without winnerId)
+    // Regular matches need both status "completed" AND a winnerId
+    const allCompleted = updatedMatches.every(
+      (match) => {
+        if (match.status !== "completed") {
+          return false;
+        }
+        // TBD vs TBD matches (no players) are complete if status is completed
+        if (!match.player1Id && !match.player2Id) {
+          return true;
+        }
+        // Regular matches need a winnerId
+        return !!match.winnerId;
+      }
+    );
+
+    if (allCompleted) {
+      // Mark tournament as completed
+      await ctx.db.patch(args.tournamentId, {
+        status: "completed",
+        updatedAt: Date.now(),
+      });
+
+      // Calculate and store tournament results
+      await ctx.scheduler.runAfter(0, internal.tournamentRegistrations.calculateTournamentResultsInternal, {
+        tournamentId: args.tournamentId,
+      });
+    }
+  },
+});
+
 // Get managers for a tournament
 export const getManagers = query({
   args: { tournamentId: v.id("tournaments") },
@@ -1580,7 +1707,37 @@ export const removeManager = mutation({
   },
 });
 
-// Accept a manager invitation
+// Get tournaments by organizer
+export const getByOrganizer = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const tournaments = await ctx.db
+      .query("tournaments")
+      .withIndex("by_organizer", (q) => q.eq("organizerId", args.userId))
+      .collect();
+
+    return await Promise.all(
+      tournaments.map(async (tournament) => {
+        let venue = null;
+        if (tournament.venueId) {
+          venue = await ctx.db.get(tournament.venueId);
+        }
+
+        return {
+          ...tournament,
+          venue: venue ? {
+            _id: venue._id,
+            name: venue.name,
+            city: venue.city,
+            region: venue.region,
+            country: venue.country,
+          } : null,
+        };
+      })
+    );
+  },
+});
+
 export const acceptManagerInvite = mutation({
   args: {
     tournamentId: v.id("tournaments"),

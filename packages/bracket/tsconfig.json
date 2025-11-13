@@ -1,0 +1,17 @@
+{
+  "extends": "@rackd/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@rackd/bracket/*": ["./src/*"],
+      "Utils/*": ["./src/utils/*"],
+      "Core/*": ["./src/core/*"],
+      "Components/*": ["./src/components/*"]
+    },
+    "outDir": "dist",
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
+

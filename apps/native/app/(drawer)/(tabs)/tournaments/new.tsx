@@ -35,6 +35,11 @@ export default function NewTournamentScreen() {
 	const [flyerUrl, setFlyerUrl] = useState<string | undefined>(undefined);
 	const [createPost, setCreatePost] = useState(false);
 	const [venueId, setVenueId] = useState<Id<"venues"> | undefined>(undefined);
+	
+	// Turnstile - Commented out, only using on login/signup
+	// Note: Turnstile is web-based, so for React Native we verify on backend only
+	// const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+	const turnstileToken = null;
 
 	const handleSubmit = async () => {
 		if (!name.trim()) {
@@ -69,6 +74,8 @@ export default function NewTournamentScreen() {
 				flyerUrl: flyerUrl || undefined,
 				createPost: createPost || undefined,
 				venueId: venueId,
+				// Turnstile - Commented out, only using on login/signup
+				// turnstileToken: turnstileToken || undefined,
 			});
 
 			Alert.alert("Success", "Tournament created successfully!", [

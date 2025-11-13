@@ -1,0 +1,29 @@
+{
+  "name": "@rackd/cloudflare",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client/index.ts",
+    "./client/images": "./src/client/images.ts",
+    "./client/turnstile": "./src/client/turnstile.tsx",
+    "./client/turnstile-native": "./src/client/turnstile-native.ts",
+    "./backend": "./src/backend/index.ts",
+    "./backend/images": "./src/backend/images.ts",
+    "./backend/turnstile": "./src/backend/turnstile.ts",
+    "./backend/r2": "./src/backend/r2.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@rackd/eslint-config": "workspace:*",
+    "@rackd/typescript-config": "workspace:*",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.33.0",
+    "typescript": "5.9.2"
+  },
+  "dependencies": {}
+}
+

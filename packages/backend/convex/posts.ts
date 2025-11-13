@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { CounterHelpers } from "./counters";
 import { getCurrentUserId, getCurrentUserIdOrThrow, getCurrentUser } from "./lib/utils";
+import { internal } from "./_generated/api";
 
 // Create post
 export const create = mutation({
@@ -11,9 +12,46 @@ export const create = mutation({
     tournamentId: v.optional(v.id("tournaments")),
     matchId: v.optional(v.id("matches")),
     type: v.optional(v.string()),
+    turnstileToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Verify Turnstile token if provided
+    if (args.turnstileToken) {
+      const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+      if (secretKey) {
+        try {
+          const formData = new FormData();
+          formData.append("secret", secretKey);
+          formData.append("response", args.turnstileToken);
+
+          const response = await fetch(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Turnstile verification request failed");
+          }
+
+          const result = (await response.json()) as {
+            success: boolean;
+            error_codes?: string[];
+          };
+
+          if (!result.success || result.error_codes?.length) {
+            throw new Error(`Turnstile verification failed: ${result.error_codes?.join(", ") || "Unknown error"}`);
+          }
+        } catch (error) {
+          console.error("Turnstile verification failed:", error);
+          throw new Error("Verification failed. Please try again.");
+        }
+      }
+    }
 
     const postId = await ctx.db.insert("posts", {
       userId,

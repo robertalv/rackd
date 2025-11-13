@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "convex/react"
+import { useMutation, useAction } from "convex/react"
 import { api } from "@rackd/backend/convex/_generated/api"
 import { toast } from "sonner"
 
@@ -18,6 +18,7 @@ export function useImageUpload(options: UseImageUploadOptions) {
   const [uploadProgress, setUploadProgress] = useState(0)
   
   const generateUploadUrl = useMutation(api.files.generateUploadUrl)
+  const processImageUpload = useAction(api.files.processImageUpload)
 
   const uploadImage = async (file: File) => {
     if (!file) {
@@ -25,10 +26,10 @@ export function useImageUpload(options: UseImageUploadOptions) {
       return null
     }
 
-    // Validate file type
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    // Validate file type (including HEIC which will be converted via Cloudflare Images)
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif"]
     if (!validTypes.includes(file.type)) {
-      toast.error("Please upload a valid image file (JPG, PNG, GIF, or WebP)")
+      toast.error("Please upload a valid image file (JPG, PNG, GIF, WebP, or HEIC)")
       return null
     }
 
@@ -58,11 +59,19 @@ export function useImageUpload(options: UseImageUploadOptions) {
       }
 
       const { storageId } = await response.json()
-      setUploadProgress(100)
+      setUploadProgress(75)
 
-      // For now, we'll use the storageId as the image URL since Convex will handle the URL generation
-      // In a real implementation, you'd get the actual URL from the server
-      const imageUrl = storageId // The backend will resolve this to a proper URL
+      // Process image - automatically converts HEIC to web format
+      let imageUrl = storageId;
+      try {
+        const processed = await processImageUpload({ storageId });
+        imageUrl = processed.displayUrl;
+        setUploadProgress(100);
+      } catch (error) {
+        console.error("Failed to process image:", error);
+        // Continue with original storageId if processing fails
+        setUploadProgress(100);
+      }
 
       if (options.onSuccess) {
         options.onSuccess(imageUrl, storageId)

@@ -7,12 +7,16 @@ import { Card, CardContent } from "@rackd/ui/components/card";
 import { Button } from "@rackd/ui/components/button";
 import { Badge } from "@rackd/ui/components/badge";
 import { MapPin, ExternalLink } from "lucide-react";
+import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 
 interface NearbyVenuesProps {
+  userId?: Id<"users">;
   limit?: number;
 }
 
-export function NearbyVenues({ limit = 5 }: NearbyVenuesProps) {
+export function NearbyVenues({ userId, limit = 5 }: NearbyVenuesProps) {
+  // Note: getNearby uses current user's location, not userId parameter
+  // TODO: Create a query that accepts userId to get venues near a specific user
   const venues = useQuery(api.venues.getNearby, { limit }) ?? [];
 
   if (!venues || venues.length === 0) {
@@ -62,7 +66,10 @@ export function NearbyVenues({ limit = 5 }: NearbyVenuesProps) {
                   size="sm" 
                   variant="ghost" 
                   className="h-8 px-2 shrink-0"
-                  onClick={() => window.location.href = `/venues/${venue._id}`}
+                  onClick={() => {
+                    // TODO: Navigate to venue detail page when route is created
+                    console.log("Navigate to venue:", venue._id);
+                  }}
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -77,7 +84,10 @@ export function NearbyVenues({ limit = 5 }: NearbyVenuesProps) {
           variant="outline" 
           className="w-full" 
           size="sm"
-          onClick={() => window.location.href = "/venues"}
+          onClick={() => {
+            // TODO: Navigate to venues page when route is created
+            console.log("Navigate to venues page");
+          }}
         >
           <MapPin className="h-4 w-4 mr-2" />
           Browse All Venues

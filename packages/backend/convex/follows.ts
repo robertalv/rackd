@@ -35,6 +35,20 @@ export const follow = mutation({
     await CounterHelpers.incrementUserFollowing(ctx, currentUserId);
     await CounterHelpers.incrementUserFollowers(ctx, args.userId);
 
+    // Update user document fields for immediate UI updates
+    const currentUser = await ctx.db.get(currentUserId);
+    
+    if (currentUser) {
+      await ctx.db.patch(currentUserId, {
+        followingCount: (currentUser.followingCount || 0) + 1,
+      });
+    }
+    
+    // targetUser was already fetched above
+    await ctx.db.patch(args.userId, {
+      followerCount: (targetUser.followerCount || 0) + 1,
+    });
+
     // Create notification
     await ctx.db.insert("notifications", {
       userId: args.userId,
@@ -69,6 +83,22 @@ export const unfollow = mutation({
     // Update counts using sharded counters
     await CounterHelpers.decrementUserFollowing(ctx, currentUserId);
     await CounterHelpers.decrementUserFollowers(ctx, args.userId);
+
+    // Update user document fields for immediate UI updates
+    const currentUser = await ctx.db.get(currentUserId);
+    const targetUser = await ctx.db.get(args.userId);
+    
+    if (currentUser && currentUser.followingCount > 0) {
+      await ctx.db.patch(currentUserId, {
+        followingCount: currentUser.followingCount - 1,
+      });
+    }
+    
+    if (targetUser && targetUser.followerCount > 0) {
+      await ctx.db.patch(args.userId, {
+        followerCount: targetUser.followerCount - 1,
+      });
+    }
   },
 });
 

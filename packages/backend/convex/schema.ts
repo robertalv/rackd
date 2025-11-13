@@ -547,6 +547,13 @@ export const tables = {
 			),
 		),
 
+		// Tournament results (calculated when tournament is completed)
+		position: v.optional(v.union(v.null(), v.number())),
+		winnings: v.optional(v.union(v.null(), v.number())),
+		matchesWon: v.optional(v.union(v.null(), v.number())),
+		matchesLost: v.optional(v.union(v.null(), v.number())),
+		eliminatedAt: v.optional(v.union(v.null(), v.number())), // Timestamp when player was eliminated
+
 		updatedAt: v.optional(v.union(v.null(), v.number())),
 	})
 		.index("by_tournament", ["tournamentId"])
@@ -607,6 +614,13 @@ export const tables = {
 		.index("by_bracket_type", ["tournamentId", "bracketType"])
 		.index("by_round", ["tournamentId", "round"])
 		.index("by_bracket_position", ["tournamentId", "bracketPosition"]),
+
+	waitlist: defineTable({
+		email: v.string(),
+		source: v.optional(v.string()),
+		createdAt: v.number(),
+	})
+		.index("by_email", ["email"]),
 
 };
 

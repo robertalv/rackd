@@ -21,6 +21,8 @@ import { VenueSearch } from "../venues/venue-search";
 import { SaveTemplateModal } from "./save-template-modal";
 import { AddTablesModal } from "./add-tables-modal";
 import { TournamentFlyerUpload } from "../file-upload/tournament-flyer-upload";
+// Turnstile - Commented out, only using on login/signup
+// import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
 import {
   Table,
   TableBody,
@@ -68,6 +70,20 @@ export function TournamentForm() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("09:00");
   const [createPost, setCreatePost] = useState(false);
+
+  // Turnstile bot protection - Commented out, only using on login/signup
+  // const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  // const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile } = useTurnstile({
+  //   siteKey: turnstileSiteKey || "",
+  //   theme: "auto",
+  //   size: "normal",
+  //   onSuccess: () => {
+  //     // Token is ready
+  //   },
+  //   onError: (error) => {
+  //     console.error("Turnstile error:", error);
+  //   },
+  // });
 
   const { register, handleSubmit, control, formState: { isSubmitting }, watch, setValue } = useForm<FormData>({
     defaultValues: {
@@ -129,6 +145,12 @@ export function TournamentForm() {
   }, []);
 
   const onSubmit = async (data: FormData) => {
+    // Turnstile verification - Commented out, only using on login/signup
+    // if (turnstileSiteKey && !turnstileToken) {
+    //   alert("Please complete the verification");
+    //   return;
+    // }
+
     try {
       // Combine selected date and time
       let combinedDateTime: number;
@@ -149,6 +171,7 @@ export function TournamentForm() {
         date: combinedDateTime,
         bracketOrdering: bracketOrdering || "random_draw",
         createPost: createPost || undefined,
+        // turnstileToken: turnstileToken || undefined, // Commented out
         tables: data.tables && data.tables.length > 0 ? data.tables.map((table) => ({
           label: table.label,
           startNumber: table.startNumber,
@@ -170,6 +193,11 @@ export function TournamentForm() {
       // }
 
       navigate({ to: `/tournaments/${tournamentId}` });
+      
+      // Reset Turnstile after successful creation - Commented out
+      // if (turnstileSiteKey) {
+      //   resetTurnstile();
+      // }
     } catch (error) {
       console.error("Failed to create tournament:", error);
     }
@@ -533,14 +561,22 @@ export function TournamentForm() {
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {/* Turnstile widget - Commented out, only using on login/signup */}
+              {/* {turnstileSiteKey && (
+                <div ref={turnstileContainerRef} className="flex justify-center" />
+              )} */}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="flex-1"
+              >
                 {isSubmitting ? "Creating..." : "Create Tournament"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveTemplate}
-              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveTemplate}
+                >
                 <Save className="h-4 w-4 mr-1" />
                 Save as Template
               </Button>

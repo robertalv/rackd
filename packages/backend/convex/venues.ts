@@ -263,8 +263,15 @@ export const update = mutation({
       throw new Error("Not authorized to update this venue");
     }
 
-    const { id, ...updates } = args;
-    await ctx.db.patch(id, updates);
+    const { id, imageStorageId, ...updates } = args;
+    
+    // Convert imageStorageId to images array format
+    const patchData: any = { ...updates };
+    if (imageStorageId !== undefined) {
+      patchData.images = imageStorageId ? [imageStorageId] : [];
+    }
+    
+    await ctx.db.patch(id, patchData);
   },
 });
 

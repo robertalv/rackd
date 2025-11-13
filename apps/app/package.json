@@ -12,6 +12,8 @@
     "@convex-dev/react-query": "^0.0.0-alpha.8",
     "@hookform/resolvers": "^5.2.2",
     "@rackd/backend": "workspace:*",
+    "@rackd/bracket": "workspace:*",
+    "@rackd/cloudflare": "workspace:*",
     "@rackd/ui": "workspace:*",
     "@tabler/icons-react": "^3.35.0",
     "@tailwindcss/vite": "^4.1.8",

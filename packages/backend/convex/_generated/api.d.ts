@@ -14,15 +14,18 @@ import type * as counters from "../counters.js";
 import type * as files from "../files.js";
 import type * as follows from "../follows.js";
 import type * as http from "../http.js";
+import type * as lib_cloudflare from "../lib/cloudflare.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as matches from "../matches.js";
 import type * as notifications from "../notifications.js";
 import type * as players from "../players.js";
 import type * as posts from "../posts.js";
 import type * as sessions from "../sessions.js";
+import type * as tournamentRegistrations from "../tournamentRegistrations.js";
 import type * as tournaments from "../tournaments.js";
 import type * as users from "../users.js";
 import type * as venues from "../venues.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -45,15 +48,18 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   follows: typeof follows;
   http: typeof http;
+  "lib/cloudflare": typeof lib_cloudflare;
   "lib/utils": typeof lib_utils;
   matches: typeof matches;
   notifications: typeof notifications;
   players: typeof players;
   posts: typeof posts;
   sessions: typeof sessions;
+  tournamentRegistrations: typeof tournamentRegistrations;
   tournaments: typeof tournaments;
   users: typeof users;
   venues: typeof venues;
+  waitlist: typeof waitlist;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

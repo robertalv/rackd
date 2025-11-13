@@ -34,17 +34,27 @@ import {
 export function ConnectedAccounts() {
   const authMethods = useQuery(api.accounts.getMyAccounts) ?? []
   const fargoRateAccount = useQuery(api.accounts.getFargoRateAccount)
+  const apaAccount = useQuery(api.accounts.getAPAAccount)
   const disconnectAccount = useMutation(api.accounts.disconnectAccount)
   const linkFargoRateAccount = useMutation(api.accounts.linkFargoRateAccount)
   const unlinkFargoRateAccount = useMutation(api.accounts.unlinkFargoRateAccount)
   const searchFargoRatePlayersAction = useAction(api.accounts.searchFargoRatePlayers)
+  const linkAPAAccount = useMutation(api.accounts.linkAPAAccount)
+  const unlinkAPAAccount = useMutation(api.accounts.unlinkAPAAccount)
+  const searchAPAMembersAction = useAction(api.accounts.searchAPAMembers)
   
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedPlayer, setSelectedPlayer] = React.useState<any>(null)
   const [searchResults, setSearchResults] = React.useState<any[]>([])
   const [isSearching, setIsSearching] = React.useState(false)
   
-  // Handle search with debouncing
+  // APA search state
+  const [apaSearchQuery, setApaSearchQuery] = React.useState("")
+  const [selectedAPAMember, setSelectedAPAMember] = React.useState<any>(null)
+  const [apaSearchResults, setApaSearchResults] = React.useState<any[]>([])
+  const [isSearchingAPA, setIsSearchingAPA] = React.useState(false)
+  
+  // Handle FargoRate search with debouncing
   React.useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([])
@@ -67,7 +77,30 @@ export function ConnectedAccounts() {
     return () => clearTimeout(timeoutId)
   }, [searchQuery, searchFargoRatePlayersAction])
   
-  const isLoading = authMethods === undefined || fargoRateAccount === undefined
+  // Handle APA search with debouncing
+  React.useEffect(() => {
+    if (apaSearchQuery.length < 2) {
+      setApaSearchResults([])
+      return
+    }
+    
+    const timeoutId = setTimeout(async () => {
+      setIsSearchingAPA(true)
+      try {
+        const results = await searchAPAMembersAction({ query: apaSearchQuery })
+        setApaSearchResults(results || [])
+      } catch (error) {
+        console.error("Failed to search APA members:", error)
+        setApaSearchResults([])
+      } finally {
+        setIsSearchingAPA(false)
+      }
+    }, 300) // Debounce by 300ms
+    
+    return () => clearTimeout(timeoutId)
+  }, [apaSearchQuery, searchAPAMembersAction])
+  
+  const isLoading = authMethods === undefined || fargoRateAccount === undefined || apaAccount === undefined
 
   const getProviderIcon = (method: any) => {
     const provider = getProviderName(method)
@@ -133,6 +166,34 @@ export function ConnectedAccounts() {
     } catch (error: any) {
       console.error("Failed to unlink FargoRate account:", error)
       toast.error(error.message || "Failed to unlink FargoRate account")
+    }
+  }
+
+  const handleLinkAPA = async () => {
+    if (!selectedAPAMember) return
+    
+    try {
+      await linkAPAAccount({
+        apaId: String(selectedAPAMember.memberId),
+        name: selectedAPAMember.name,
+        apaSkillLevel: selectedAPAMember.skillLevel || undefined,
+      })
+      toast.success("APA account linked successfully")
+      setApaSearchQuery("")
+      setSelectedAPAMember(null)
+    } catch (error: any) {
+      console.error("Failed to link APA account:", error)
+      toast.error(error.message || "Failed to link APA account")
+    }
+  }
+
+  const handleUnlinkAPA = async () => {
+    try {
+      await unlinkAPAAccount({})
+      toast.success("APA account unlinked successfully")
+    } catch (error: any) {
+      console.error("Failed to unlink APA account:", error)
+      toast.error(error.message || "Failed to unlink APA account")
     }
   }
 
@@ -384,6 +445,140 @@ export function ConnectedAccounts() {
                       disabled={!selectedPlayer}
                     >
                       Link FargoRate Account
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* APA Account Section */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground">APA Account</h3>
+        
+        {apaAccount ? (
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                    <Trophy className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{apaAccount.name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {apaAccount.apaId && (
+                        <span>Member ID: {apaAccount.apaId}</span>
+                      )}
+                      {apaAccount.apaSkillLevel && (
+                        <span>• Skill Level: {apaAccount.apaSkillLevel}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Connected</Badge>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Unlink className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Unlink APA Account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove your APA account link. You can link it again later.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleUnlinkAPA}>
+                          Unlink
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="opacity-50">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Link your APA account (coming soon)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Connect your APA member profile to track your skill level and statistics
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      disabled
+                      placeholder="Search by name or member ID..."
+                      value={apaSearchQuery}
+                      onChange={(e) => setApaSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  
+                  {apaSearchQuery.length >= 2 && (
+                    <div className="max-h-60 overflow-y-auto rounded-md border">
+                      {isSearchingAPA ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                          Searching...
+                        </div>
+                      ) : apaSearchResults.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          No members found. Try searching by name or member ID.
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {apaSearchResults.map((member: any) => (
+                            <button
+                              key={member.memberId}
+                              onClick={() => setSelectedAPAMember(member)}
+                              className={`w-full p-3 text-left hover:bg-muted ${
+                                selectedAPAMember?.memberId === member.memberId ? "bg-muted" : ""
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium">{member.name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {member.memberId && (
+                                      <span>Member ID: {member.memberId}</span>
+                                    )}
+                                    {member.email && (
+                                      <span>• {member.email}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {selectedAPAMember?.memberId === member.memberId && (
+                                  <Badge variant="default">Selected</Badge>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {selectedAPAMember && (
+                    <Button
+                      onClick={handleLinkAPA}
+                      className="w-full"
+                      disabled={!selectedAPAMember}
+                    >
+                      Link APA Account
                     </Button>
                   )}
                 </div>

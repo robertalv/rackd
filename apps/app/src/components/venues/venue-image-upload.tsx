@@ -147,7 +147,7 @@ export function VenueImageUpload({
       {!hasFiles && (
         <Dropzone
           src={uploadedFiles}
-          accept={{ "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"] }}
+          accept={{ "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".heif"] }}
           maxSize={10 * 1024 * 1024} // 10MB
           maxFiles={1}
           onDrop={handleDrop}
@@ -190,5 +190,6 @@ export function VenueImageUpload({
     </div>
   );
 }
+
 
 

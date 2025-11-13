@@ -12,6 +12,8 @@ import { PostImage } from "./post-image";
 import { EnhancedMentionInput } from "./enhanced-mention-input";
 import { ProfileAvatar } from "../profile-avatar";
 import { useCurrentUser } from "@/hooks/use-current-user";
+// Turnstile - Commented out, only using on login/signup
+// import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
 
 interface PostComposerProps {
   placeholder?: string;
@@ -36,10 +38,30 @@ export function PostComposer({
     }
   });
 
+  // Turnstile bot protection - Commented out, only using on login/signup
+  // const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  // const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile } = useTurnstile({
+  //   siteKey: turnstileSiteKey || "",
+  //   theme: "auto",
+  //   size: "normal",
+  //   onSuccess: () => {
+  //     // Token is ready
+  //   },
+  //   onError: (error) => {
+  //     console.error("Turnstile error:", error);
+  //   },
+  // });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!content.trim() && uploadedImages.length === 0) return;
+    
+    // Turnstile verification - Commented out, only using on login/signup
+    // if (turnstileSiteKey && !turnstileToken) {
+    //   alert("Please complete the verification");
+    //   return;
+    // }
     
     setIsPosting(true);
     try {
@@ -47,7 +69,13 @@ export function PostComposer({
         content: content.trim(),
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
         type: "post",
+        // turnstileToken: turnstileToken || undefined, // Commented out
       });
+      
+      // Reset Turnstile after successful post - Commented out
+      // if (turnstileSiteKey) {
+      //   resetTurnstile();
+      // }
       
       setContent("");
       setUploadedImages([]);
@@ -180,18 +208,26 @@ export function PostComposer({
             </Button>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-400">
-              {content.length}/500
-            </span>
-            <Button 
-              type="submit" 
-              onClick={handleSubmit}
-              disabled={(!content.trim() && uploadedImages.length === 0) || isPosting || isUploading || content.length > 500}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full disabled:opacity-50"
-            >
-              {isPosting ? "Posting..." : "Post"}
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              {/* Turnstile widget - Commented out, only using on login/signup */}
+              {/* {turnstileSiteKey && (
+                <div ref={turnstileContainerRef} className="flex justify-end" />
+              )} */}
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-400">
+                {content.length}/500
+              </span>
+              <Button 
+                type="submit" 
+                onClick={handleSubmit}
+                disabled={(!content.trim() && uploadedImages.length === 0) || isPosting || isUploading || content.length > 500}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full disabled:opacity-50"
+              >
+                {isPosting ? "Posting..." : "Post"}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

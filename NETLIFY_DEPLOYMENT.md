@@ -29,9 +29,10 @@ You have two options for deploying:
    - Choose the `rackd` repository
 
 3. **Configure build settings:**
-   - **Base directory:** Leave empty (or set to `/`)
-   - **Build command:** `pnpm --filter app build`
-   - **Publish directory:** `apps/app/dist`
+   - **Base directory:** `/` (repo root) - **IMPORTANT:** This must be set to repo root for monorepo
+   - **Config file:** `apps/app/netlify.toml` (or leave empty to auto-detect)
+   - **Build command:** Will be read from `netlify.toml` (or set to `pnpm --filter app build`)
+   - **Publish directory:** Will be read from `netlify.toml` (or set to `apps/app/dist`)
    - **Package manager:** `pnpm`
 
 4. **Set environment variables:**
@@ -52,9 +53,10 @@ You have two options for deploying:
 1. **Create a new site** (repeat steps 1-2 from above)
 
 2. **Configure build settings:**
-   - **Base directory:** Leave empty (or set to `/`)
-   - **Build command:** `pnpm --filter web build`
-   - **Publish directory:** `apps/web/dist`
+   - **Base directory:** `/` (repo root) - **IMPORTANT:** This must be set to repo root for monorepo
+   - **Config file:** `apps/web/netlify.toml` (or leave empty to auto-detect)
+   - **Build command:** Will be read from `netlify.toml` (or set to `pnpm --filter web build`)
+   - **Publish directory:** Will be read from `netlify.toml` (or set to `apps/web/dist`)
    - **Package manager:** `pnpm`
 
 3. **Set environment variables:**

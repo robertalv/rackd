@@ -11,6 +11,7 @@
     "version": "1.0.0",
     "ios": {
       "bundleIdentifier": "com.rackd.app",
+      "buildNumber": "2",
       "associatedDomains": [
         "applinks:rackd.net",
         "applinks:www.rackd.net",
@@ -23,6 +24,7 @@
     },
     "android": {
       "package": "com.rackd.app",
+      "versionCode": 2,
       "intentFilters": [
         {
           "action": "VIEW",

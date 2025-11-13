@@ -1,28 +1,16 @@
 [build]
-  # Build script that automatically finds repo root
-  # IMPORTANT: In Netlify dashboard, ensure "Base directory" is empty (repo root)
-  # Site settings → Build & deploy → Continuous Deployment → Base directory: (empty)
-  command = "if [ -f apps/app/netlify-build.sh ]; then bash apps/app/netlify-build.sh; elif [ -f netlify-build.sh ]; then bash netlify-build.sh; else cd $(git rev-parse --show-toplevel 2>/dev/null || echo '.') && bash apps/app/netlify-build.sh; fi"
+  command = "pnpm build"
   publish = "apps/app/dist/client"
-  # The @netlify/vite-plugin-tanstack-start plugin automatically configures functions
-  # It will create the function in .netlify/functions/server (relative to repo root)
   functions = ".netlify/functions"
-  
+
 [build.environment]
   NODE_VERSION = "20"
   PNPM_VERSION = "10.13.1"
-  
-# Production environment variables should be set in Netlify dashboard:
-# - VITE_CONVEX_URL (set automatically by convex deploy during build)
-# - Any other environment variables your app needs
 
-[dev]
-  command = "turbo run dev --filter app"
-  port = 3001
-
-# The @netlify/vite-plugin-tanstack-start plugin automatically handles redirects
-# But we'll keep this explicit redirect to ensure it works correctly
+# Redirect all routes to SSR function (static assets are served automatically by Netlify)
+# The @netlify/vite-plugin-tanstack-start plugin handles the function setup
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"
   status = 200
+  force = false

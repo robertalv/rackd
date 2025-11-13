@@ -3,8 +3,8 @@
 @import 'heroui-native/styles';
 
 @source './node_modules/heroui-native/lib';
-@source '../../apps/**/*.{ts,tsx}';
-@source '../../components/**/*.{ts,tsx}';
+@source './app/**/*.{ts,tsx}';
+@source './components/**/*.{ts,tsx}';
 
 @import "tw-animate-css";
 

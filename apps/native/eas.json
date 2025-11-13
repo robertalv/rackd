@@ -19,6 +19,7 @@
       "env": {
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
+      "prebuildCommand": "node scripts/update-version.js",
       "ios": {
         "simulator": false
       },
@@ -32,11 +33,12 @@
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://valuable-jackal-755.convex.site",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
+      "prebuildCommand": "node scripts/update-version.js",
       "ios": {
         "simulator": false
       },
       "android": {
-        "buildType": "aab"
+        "buildType": "apk"
       }
     }
   },

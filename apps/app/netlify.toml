@@ -1,6 +1,7 @@
 [build]
-  command = "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd \"pnpm --filter app build\""
+  command = "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd \"pnpm --filter app build && mkdir -p apps/app/netlify/functions/server && cp -r apps/app/dist/server/* apps/app/netlify/functions/server/\""
   publish = "apps/app/dist/client"
+  functions = "apps/app/netlify/functions"
   
 [build.environment]
   NODE_VERSION = "20"
@@ -8,5 +9,5 @@
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/server"
   status = 200

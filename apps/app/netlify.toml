@@ -1,11 +1,3 @@
-[build]
-  command = "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd 'pnpm --filter app build'"
-  publish = "apps/app/dist"
-  
-[build.environment]
-  NODE_VERSION = "20"
-  PNPM_VERSION = "10.13.1"
-
 [[redirects]]
   from = "/*"
   to = "/index.html"

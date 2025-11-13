@@ -4,7 +4,9 @@
   # Site settings → Build & deploy → Continuous Deployment → Base directory: (empty)
   command = "if [ -f apps/app/netlify-build.sh ]; then bash apps/app/netlify-build.sh; elif [ -f netlify-build.sh ]; then bash netlify-build.sh; else cd $(git rev-parse --show-toplevel 2>/dev/null || echo '.') && bash apps/app/netlify-build.sh; fi"
   publish = "apps/app/dist/client"
-  functions = "apps/app/netlify/functions"
+  # The @netlify/vite-plugin-tanstack-start plugin automatically configures functions
+  # It will create the function in .netlify/functions/server (relative to repo root)
+  functions = ".netlify/functions"
   
 [build.environment]
   NODE_VERSION = "20"
@@ -18,6 +20,8 @@
   command = "turbo run dev --filter app"
   port = 3001
 
+# The @netlify/vite-plugin-tanstack-start plugin automatically handles redirects
+# But we'll keep this explicit redirect to ensure it works correctly
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"

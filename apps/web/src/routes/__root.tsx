@@ -12,11 +12,13 @@ import appCss from "../index.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import Loader from "@/components/loader";
 
-import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import type { AppRouter } from "@relio/api/routers/index";
+import type { ConvexReactClient } from "convex/react";
+import type { ConvexQueryClient } from "@convex-dev/react-query";
+
 export interface RouterAppContext {
-	trpc: TRPCOptionsProxy<AppRouter>;
 	queryClient: QueryClient;
+	convexClient: ConvexReactClient;
+	convexQueryClient: ConvexQueryClient;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({

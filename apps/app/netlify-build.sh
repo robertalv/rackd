@@ -33,7 +33,9 @@ echo "🚀 Starting build..."
 if [ "$CONTEXT" = "production" ]; then
   # Production build: Deploy Convex and build
   echo "📦 Production build: Deploying Convex..."
-  npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd "pnpm --filter app build && mkdir -p apps/app/netlify/functions/server && cp -r apps/app/dist/server/* apps/app/netlify/functions/server/"
+  # The @netlify/vite-plugin-tanstack-start plugin will automatically generate
+  # the Netlify function during the Vite build process
+  npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd "pnpm --filter app build"
 else
   # Preview/Deploy-preview build: Skip Convex deploy, use existing VITE_CONVEX_URL
   echo "🔍 Preview build: Skipping Convex deploy, using existing VITE_CONVEX_URL"
@@ -42,13 +44,17 @@ else
     echo "   Preview builds will use the production Convex URL if available"
   fi
   # Just build the app without deploying Convex
+  # The @netlify/vite-plugin-tanstack-start plugin will automatically generate
+  # the Netlify function during the Vite build process
   pnpm --filter app build
-  mkdir -p apps/app/netlify/functions/server
-  cp -r apps/app/dist/server/* apps/app/netlify/functions/server/
 fi
 
 echo "✅ Build complete!"
 echo "📦 Checking build output..."
 ls -la apps/app/dist/client/ | head -5
-ls -la apps/app/netlify/functions/server/ | head -5
+# The plugin creates the function in .netlify/functions/server (relative to project root)
+if [ -d ".netlify/functions/server" ]; then
+  echo "📦 Netlify function created by plugin:"
+  ls -la .netlify/functions/server/ | head -5
+fi
 

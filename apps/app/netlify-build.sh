@@ -23,9 +23,29 @@ if [ ! -f "pnpm-workspace.yaml" ]; then
   exit 1
 fi
 
+# Determine build context
+# Netlify sets CONTEXT to "deploy-preview" for PR builds, "production" for main branch
+CONTEXT="${CONTEXT:-production}"
+echo "🔍 Build context: $CONTEXT"
+
 # Run Convex deploy and build
 echo "🚀 Starting build..."
-npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd "pnpm --filter app build && mkdir -p apps/app/netlify/functions/server && cp -r apps/app/dist/server/* apps/app/netlify/functions/server/"
+if [ "$CONTEXT" = "production" ]; then
+  # Production build: Deploy Convex and build
+  echo "📦 Production build: Deploying Convex..."
+  npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd "pnpm --filter app build && mkdir -p apps/app/netlify/functions/server && cp -r apps/app/dist/server/* apps/app/netlify/functions/server/"
+else
+  # Preview/Deploy-preview build: Skip Convex deploy, use existing VITE_CONVEX_URL
+  echo "🔍 Preview build: Skipping Convex deploy, using existing VITE_CONVEX_URL"
+  if [ -z "$VITE_CONVEX_URL" ]; then
+    echo "⚠️  Warning: VITE_CONVEX_URL not set for preview build"
+    echo "   Preview builds will use the production Convex URL if available"
+  fi
+  # Just build the app without deploying Convex
+  pnpm --filter app build
+  mkdir -p apps/app/netlify/functions/server
+  cp -r apps/app/dist/server/* apps/app/netlify/functions/server/
+fi
 
 echo "✅ Build complete!"
 echo "📦 Checking build output..."

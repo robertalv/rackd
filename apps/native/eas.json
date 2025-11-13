@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 5.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -35,7 +36,7 @@
         "simulator": false
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "aab"
       }
     }
   },
@@ -47,7 +48,6 @@
         "appleTeamId": "D45KX59CR8"
       },
       "android": {
-        "serviceAccountKeyPath": "./path/to/api-key.json",
         "track": "internal"
       }
     }

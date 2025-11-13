@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm --filter app build"
+  command = "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd 'pnpm --filter app build'"
   publish = "apps/app/dist"
   
 [build.environment]

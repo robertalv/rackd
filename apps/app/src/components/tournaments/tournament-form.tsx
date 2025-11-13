@@ -21,6 +21,7 @@ import { VenueSearch } from "../venues/venue-search";
 import { SaveTemplateModal } from "./save-template-modal";
 import { AddTablesModal } from "./add-tables-modal";
 import { TournamentFlyerUpload } from "../file-upload/tournament-flyer-upload";
+import { TournamentUrlImporter } from "./tournament-url-importer";
 // Turnstile - Commented out, only using on login/signup
 // import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
 import {
@@ -248,6 +249,9 @@ export function TournamentForm() {
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium border-b pb-2">Basic Information</h3>
+
+              {/* URL Importer */}
+              <TournamentUrlImporter onExtract={handleExtractInfo} />
 
               <div className="space-y-2">
                 <Label htmlFor="name">Tournament Name *</Label>

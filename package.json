@@ -20,6 +20,10 @@
     "turbo": "^2.5.4"
   },
   "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=20 <21",
+    "pnpm": ">=10.13.1"
+  },
   "pnpm": {
     "overrides": {
       "react": "19.1.0",

@@ -15,6 +15,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
       "ios": {
         "simulator": false
       },
@@ -25,7 +28,8 @@
     "production": {
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://valuable-jackal-755.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://valuable-jackal-755.convex.site"
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://valuable-jackal-755.convex.site",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "simulator": false

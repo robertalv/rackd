@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar
 import { cn } from "@rackd/ui/lib/utils";
 import { useState, useEffect } from "react";
 import { hasFlag } from 'country-flag-icons';
+import { getInitials } from "@/lib/utils";
 
 interface ProfileAvatarProps {
   user: {
@@ -43,23 +44,11 @@ export function ProfileAvatar({ user, size = "md", className, showShimmer = fals
     }
   }, [user.country]);
 
-  const getInitials = (name: string | undefined) => {
-    if (!name) return "U";
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const renderFallback = () => {
-    // If user has an image, prioritize that
     if (user.image) {
-      return null; // AvatarImage will handle this
+      return null;
     }
 
-    // If we have a country flag component, render it
     if (FlagComponent) {
       return (
         <div className="w-full h-full overflow-hidden rounded-full">
@@ -68,9 +57,8 @@ export function ProfileAvatar({ user, size = "md", className, showShimmer = fals
       );
     }
 
-    // Fallback to initials
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted">
+      <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground text-xs font-medium">
         {getInitials(user.displayName)}
       </div>
     );
@@ -87,7 +75,6 @@ export function ProfileAvatar({ user, size = "md", className, showShimmer = fals
         zIndex: 0
       }}
     >
-      {/* Shimmer effect overlay on hover */}
       {showShimmer && (
         <>
         <span
@@ -105,7 +92,6 @@ export function ProfileAvatar({ user, size = "md", className, showShimmer = fals
           style={{
             background: "linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.60) 50%, rgba(255,255,255,0) 60%)",
             animation: "shimmer-slide 1.1s linear infinite",
-            // To create the shimmer effect
             backgroundRepeat: "no-repeat"
           }}
         ></span>
@@ -126,7 +112,7 @@ export function ProfileAvatar({ user, size = "md", className, showShimmer = fals
         </>
       )}
       {user.image && <AvatarImage src={user.image} className="object-cover" />}
-      <AvatarFallback className="border-0 p-0 object-cover">
+      <AvatarFallback className="p-0 object-cover bg-primary">
         {renderFallback()}
       </AvatarFallback>
     </Avatar>

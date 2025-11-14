@@ -3,6 +3,7 @@ import { mutation, query, action } from "./_generated/server";
 import { CounterHelpers } from "./counters";
 import { getCurrentUserId, getCurrentUserIdOrThrow, getCurrentUser } from "./lib/utils";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 // Create post
 export const create = mutation({
@@ -625,25 +626,71 @@ export const isCommentLiked = query({
 
 // Get comments for post
 export const getComments = query({
-  args: { postId: v.id("posts") },
+  args: { 
+    postId: v.id("posts"),
+    includeHidden: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx);
+    
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_post", q => q.eq("postId", args.postId))
       .order("asc")
       .collect();
 
-    // Populate with user data
+    // Get hidden comments for current user if logged in
+    let hiddenCommentIds = new Set<Id<"comments">>();
+    if (userId) {
+      const hiddenComments = await ctx.db
+        .query("hiddenComments")
+        .withIndex("by_user", q => q.eq("userId", userId))
+        .collect();
+      hiddenCommentIds = new Set(hiddenComments.map(hc => hc.commentId));
+    }
+
+    // Filter out hidden comments unless includeHidden is true
+    const visibleComments = args.includeHidden 
+      ? comments 
+      : comments.filter(comment => !hiddenCommentIds.has(comment._id));
+
+    // Populate with user data and mark hidden comments
     return await Promise.all(
-      comments.map(async (comment) => {
+      visibleComments.map(async (comment) => {
         const user = await ctx.db.get(comment.userId);
+        const isHidden = userId ? hiddenCommentIds.has(comment._id) : false;
         
         return { 
           ...comment, 
-          user: user || null
+          user: user || null,
+          isHidden,
         };
       })
     );
+  },
+});
+
+// Get count of hidden comments for a post
+export const getHiddenCommentsCount = query({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx);
+    if (!userId) return 0;
+
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_post", q => q.eq("postId", args.postId))
+      .collect();
+
+    const hiddenComments = await ctx.db
+      .query("hiddenComments")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .collect();
+
+    const hiddenCommentIds = new Set(hiddenComments.map(hc => hc.commentId));
+    const hiddenCount = comments.filter(comment => hiddenCommentIds.has(comment._id)).length;
+
+    return hiddenCount;
   },
 });
 
@@ -700,7 +747,175 @@ export const deleteComment = mutation({
       commentLikes.map(like => ctx.db.delete(like._id))
     );
 
+    // Also delete any hidden records for this comment
+    const hiddenComments = await ctx.db
+      .query("hiddenComments")
+      .withIndex("by_comment", q => q.eq("commentId", args.commentId))
+      .collect();
+    
+    await Promise.all(
+      hiddenComments.map(hidden => ctx.db.delete(hidden._id))
+    );
+
     return args.commentId;
+  },
+});
+
+// Hide comment
+export const hideComment = mutation({
+  args: { commentId: v.id("comments") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+    const comment = await ctx.db.get(args.commentId);
+    
+    if (!comment) throw new Error("Comment not found");
+
+    // Check if already hidden
+    const existing = await ctx.db
+      .query("hiddenComments")
+      .withIndex("by_comment_and_user", q =>
+        q.eq("commentId", args.commentId).eq("userId", userId)
+      )
+      .first();
+
+    if (existing) return;
+
+    // Create hidden record
+    await ctx.db.insert("hiddenComments", {
+      commentId: args.commentId,
+      userId,
+    });
+
+    return args.commentId;
+  },
+});
+
+// Unhide comment
+export const unhideComment = mutation({
+  args: { commentId: v.id("comments") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+
+    const hidden = await ctx.db
+      .query("hiddenComments")
+      .withIndex("by_comment_and_user", q =>
+        q.eq("commentId", args.commentId).eq("userId", userId)
+      )
+      .first();
+
+    if (!hidden) return;
+
+    await ctx.db.delete(hidden._id);
+
+    return args.commentId;
+  },
+});
+
+// Check if comment is hidden by current user
+export const isCommentHidden = query({
+  args: { commentId: v.id("comments") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx);
+    if (!userId) return false;
+
+    const hidden = await ctx.db
+      .query("hiddenComments")
+      .withIndex("by_comment_and_user", q =>
+        q.eq("commentId", args.commentId).eq("userId", userId)
+      )
+      .first();
+
+    return !!hidden;
+  },
+});
+
+// Report comment
+export const reportComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+    reason: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+    const comment = await ctx.db.get(args.commentId);
+    
+    if (!comment) throw new Error("Comment not found");
+    
+    // Check if user already reported this comment
+    const existingReport = await ctx.db
+      .query("reports")
+      .withIndex("by_comment", q => q.eq("commentId", args.commentId))
+      .filter(q => q.eq(q.field("reporterId"), userId))
+      .first();
+
+    if (existingReport) {
+      throw new Error("You have already reported this comment");
+    }
+
+    // Create report
+    await ctx.db.insert("reports", {
+      reporterId: userId,
+      commentId: args.commentId,
+      reason: args.reason,
+      description: args.description,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    return args.commentId;
+  },
+});
+
+// Report post
+export const reportPost = mutation({
+  args: {
+    postId: v.id("posts"),
+    reason: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+    const post = await ctx.db.get(args.postId);
+    
+    if (!post) throw new Error("Post not found");
+    
+    // Check if user already reported this post
+    const existingReport = await ctx.db
+      .query("reports")
+      .withIndex("by_post", q => q.eq("postId", args.postId))
+      .filter(q => q.eq(q.field("reporterId"), userId))
+      .first();
+
+    if (existingReport) {
+      throw new Error("You have already reported this post");
+    }
+
+    // Create report
+    await ctx.db.insert("reports", {
+      reporterId: userId,
+      postId: args.postId,
+      reason: args.reason,
+      description: args.description,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    // Notify the post creator (don't notify if user is reporting their own post)
+    if (post.userId !== userId) {
+      await ctx.db.insert("notifications", {
+        userId: post.userId,
+        type: "report",
+        actorId: userId,
+        postId: args.postId,
+        read: false,
+      });
+
+      // Increment unread notifications counter
+      await CounterHelpers.incrementUserNotifications(ctx, post.userId);
+    }
+
+    return args.postId;
   },
 });
 

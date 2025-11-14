@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, KeyboardEvent, useEffect } from "react";
+import { useState, type KeyboardEvent, useEffect } from "react";
 import { Button } from "@rackd/ui/components/button";
 import { Input } from "@rackd/ui/components/input";
 import { Badge } from "@rackd/ui/components/badge";
 import { Label } from "@rackd/ui/components/label";
-import { X, Plus } from "lucide-react";
-import { useAction } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { toast } from "sonner";
+import { Icon, PlusSignIcon, Cancel01Icon } from "@rackd/ui/icons";
 
 interface InterestTagsManagerProps {
   interests: string[];
@@ -25,7 +25,7 @@ export function InterestTagsManager({
 }: InterestTagsManagerProps) {
   const [inputValue, setInputValue] = useState("");
   const [localInterests, setLocalInterests] = useState(interests);
-  const updateUserInterests = useAction(api.users.updateInterests);
+  const updateUserInterests = useMutation(api.users.updateInterests);
 
   // Sync local interests when prop changes
   useEffect(() => {
@@ -113,7 +113,7 @@ export function InterestTagsManager({
                   onClick={() => handleRemoveInterest(interest)}
                   aria-label={`Remove ${interest}`}
                 >
-                  <X size={10} />
+                  <Icon icon={Cancel01Icon} className="h-4 w-4" />
                 </Button>
               </Badge>
             ))}
@@ -146,7 +146,7 @@ export function InterestTagsManager({
                 size="default"
                 variant="default"
               >
-                <Plus className="h-4 w-4 mr-1" />
+                <Icon icon={PlusSignIcon} className="h-4 w-4 mr-1" />
                 Add
               </Button>
             </div>

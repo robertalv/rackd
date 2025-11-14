@@ -9,6 +9,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { useState } from "react"
 import { Link } from "@tanstack/react-router"
+import { authClient } from "@/lib/auth-client"
 
 const resetPasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -42,13 +43,13 @@ function ResetPasswordPage() {
   });
 
   // Get token from URL query params
-  // WorkOS may use either 'token' or 'password_reset_token' as the parameter name
+  // Better Auth uses 'token' as the parameter name
   const search = Route.useSearch()
   const token = search.token || undefined
   
   // Also try to get token from URL directly as fallback
   const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-  let tokenFromUrl = token || urlParams.get('token') || urlParams.get('password_reset_token') || undefined
+  let tokenFromUrl = token || urlParams.get('token') || undefined
 
   // Clean up token - handle cases where URL might be malformed
   // e.g., if token contains '{token}?token=actualToken', extract just the actual token
@@ -95,6 +96,12 @@ function ResetPasswordPage() {
     setIsResetting(true)
 
     try {
+      // Use better-auth's resetPassword method
+      await authClient.resetPassword({
+        token: resetToken,
+        password: data.password,
+      })
+
       toast.success("Password reset successfully!", {
         description: "You can now sign in with your new password.",
       })

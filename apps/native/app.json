@@ -9,6 +9,7 @@
     "name": "Rackd",
     "slug": "native",
     "version": "1.0.0",
+    "icon": "assets/images/icon.png",
     "ios": {
       "bundleIdentifier": "com.rackd.app",
       "buildNumber": "2",

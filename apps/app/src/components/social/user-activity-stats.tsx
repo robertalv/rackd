@@ -130,22 +130,34 @@ export function UserActivityStats({ userId, isOwnProfile = false }: UserActivity
   return (
     <div className="w-full">
       <Tabs defaultValue="tournaments" className="w-full">
-        <div className="w-full mb-6 border-b pb-4">
-          <div className="flex justify-end w-full">
-            <TabsList className="flex gap-2 bg-transparent">
-              <TabsTrigger value="tournaments" className="flex items-center gap-2 h-10">
+        <div className="w-full mb-6">
+          <div className="flex justify-start w-full">
+            <TabsList className="grid grid-cols-4 w-full max-w-2xl bg-muted/50 p-1 h-auto rounded-lg border border-border/50 shadow-sm">
+              <TabsTrigger 
+                value="tournaments" 
+                className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200 flex items-center gap-2"
+              >
                 <Trophy className="h-4 w-4" />
                 Tournaments
               </TabsTrigger>
-              <TabsTrigger value="statistics" className="flex items-center gap-2 h-10">
+              <TabsTrigger 
+                value="statistics" 
+                className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200 flex items-center gap-2"
+              >
                 <TrendingUp className="h-4 w-4" />
                 Statistics
               </TabsTrigger>
-              <TabsTrigger value="matches" className="flex items-center gap-2 h-10">
+              <TabsTrigger 
+                value="matches" 
+                className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200 flex items-center gap-2"
+              >
                 <Activity className="h-4 w-4" />
                 Matches
               </TabsTrigger>
-              <TabsTrigger value="venues" className="flex items-center gap-2 h-10">
+              <TabsTrigger 
+                value="venues" 
+                className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200 flex items-center gap-2"
+              >
                 <MapPin className="h-4 w-4" />
                 Venues
               </TabsTrigger>

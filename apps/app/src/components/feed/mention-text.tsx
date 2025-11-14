@@ -17,8 +17,7 @@ export function MentionText({ content, className }: MentionTextProps) {
   const parseContent = (text: string) => {
     if (!users) return [{ type: 'text', content: text }];
     
-    // Combined regex for mentions and hashtags
-    const mentionRegex = /@([A-Za-z0-9\s]+?)(?=\s|$|[^\w\s])/g;
+    const mentionRegex = /@([A-Za-z0-9_]+)/g;
     const hashtagRegex = /#([A-Za-z0-9_]+)/g;
     
     const matches = [];
@@ -63,9 +62,9 @@ export function MentionText({ content, className }: MentionTextProps) {
       }
       
       if (match.type === 'mention') {
-        // Find user by display name
+        // Find user by username (case-insensitive)
         const user = users.find(u => 
-          u.displayName.toLowerCase() === match.value?.toLowerCase()
+          u.username?.toLowerCase() === match.value?.toLowerCase()
         );
         
         if (user) {
@@ -112,21 +111,22 @@ export function MentionText({ content, className }: MentionTextProps) {
           return (
             <Link
               key={index}
-              to={`/${part.user.username}`}
+              to="/$username"
+              params={{ username: part.user.username }}
               className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
             >
               {part.content}
             </Link>
           );
         } else if (part.type === 'hashtag' && part.hashtag) {
+          // Hashtag route not yet implemented - render as styled text for now
           return (
-            <Link
+            <span
               key={index}
-              to={`/hashtag/${part.hashtag}`}
-              className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              className="text-blue-600 hover:text-blue-700 font-medium"
             >
               {part.content}
-            </Link>
+            </span>
           );
         } else {
           return (

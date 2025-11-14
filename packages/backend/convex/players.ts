@@ -37,6 +37,32 @@ export const getById = query({
   },
 });
 
+// Query: Get player by ID or user ID (handles both cases)
+export const getByIdOrUserId = query({
+  args: { id: v.union(v.id("players"), v.id("users")) },
+  handler: async (ctx, args) => {
+    // Try to get it as a player ID first
+    // ctx.db.get() will return null if the ID doesn't exist in that table
+    const playerAsPlayerId = await ctx.db.get(args.id as Id<"players">);
+    if (playerAsPlayerId) {
+      // Found it as a player ID, return it
+      return playerAsPlayerId;
+    }
+    
+    // If not found as player, try as user ID
+    const user = await ctx.db.get(args.id as Id<"users">);
+    if (user && user.playerId) {
+      const player = await ctx.db.get(user.playerId);
+      if (player) {
+        return player;
+      }
+    }
+    
+    // If user doesn't have a playerId, return null
+    return null;
+  },
+});
+
 // Query: Get player by Fargo ID
 export const getByFargoId = query({
   args: { fargoId: v.string() },

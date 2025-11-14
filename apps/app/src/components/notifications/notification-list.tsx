@@ -9,6 +9,7 @@ import { Badge } from "@rackd/ui/components/badge";
 import { Bell, BellOff, Heart, MessageCircle, Users, Trophy, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "@tanstack/react-router";
+import type { NotificationType } from "@rackd/types";
 
 export default function NotificationsPage() {
   const notifications = useQuery(api.notifications.getByUser, { limit: 50 });
@@ -31,7 +32,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
       case "follow": return <Users className="h-4 w-4 text-blue-500" />;
       case "like": return <Heart className="h-4 w-4 text-red-500" />;
@@ -47,7 +48,7 @@ export default function NotificationsPage() {
   const getNotificationText = (notification: any) => {
     const actorName = notification.actor?.displayName || "Someone";
     
-    switch (notification.type) {
+    switch (notification.type as NotificationType) {
       case "follow":
         return `${actorName} started following you`;
       case "like":
@@ -68,7 +69,7 @@ export default function NotificationsPage() {
   };
 
   const getNotificationLink = (notification: any) => {
-    switch (notification.type) {
+    switch (notification.type as NotificationType) {
       case "follow":
         return `/${notification.actor?.username}`;
       case "like":

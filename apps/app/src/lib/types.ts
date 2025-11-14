@@ -104,3 +104,15 @@ export interface APAMemberStats {
   [key: string]: any; // Allow for additional fields from API
 }
 
+// Notification Types
+export type NotificationType = 
+  | 'follow'
+  | 'like'
+  | 'comment'
+  | 'mention'
+  | 'tournament_invite'
+  | 'tournament_start'
+  | 'match_ready'
+  | 'match_result'
+  | 'report';
+

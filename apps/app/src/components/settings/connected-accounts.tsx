@@ -1,9 +1,10 @@
 "use client"
 
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@rackd/backend/convex/_generated/api"
 import { toast } from "sonner"
+import { authClient } from "@/lib/auth-client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@rackd/ui/components/card"
 import { Button } from "@rackd/ui/components/button"
 import { Badge } from "@rackd/ui/components/badge"
@@ -30,12 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@rackd/ui/components/alert-dialog"
+import { HeaderLabel } from "@rackd/ui/components/label"
 
 export function ConnectedAccounts() {
-  const authMethods = useQuery(api.accounts.getMyAccounts) ?? []
+  const [authMethods, setAuthMethods] = useState<any[]>([])
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
   const fargoRateAccount = useQuery(api.accounts.getFargoRateAccount)
   const apaAccount = useQuery(api.accounts.getAPAAccount)
-  const disconnectAccount = useMutation(api.accounts.disconnectAccount)
   const linkFargoRateAccount = useMutation(api.accounts.linkFargoRateAccount)
   const unlinkFargoRateAccount = useMutation(api.accounts.unlinkFargoRateAccount)
   const searchFargoRatePlayersAction = useAction(api.accounts.searchFargoRatePlayers)
@@ -43,19 +45,43 @@ export function ConnectedAccounts() {
   const unlinkAPAAccount = useMutation(api.accounts.unlinkAPAAccount)
   const searchAPAMembersAction = useAction(api.accounts.searchAPAMembers)
   
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [selectedPlayer, setSelectedPlayer] = React.useState<any>(null)
-  const [searchResults, setSearchResults] = React.useState<any[]>([])
-  const [isSearching, setIsSearching] = React.useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null)
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   
   // APA search state
-  const [apaSearchQuery, setApaSearchQuery] = React.useState("")
-  const [selectedAPAMember, setSelectedAPAMember] = React.useState<any>(null)
-  const [apaSearchResults, setApaSearchResults] = React.useState<any[]>([])
-  const [isSearchingAPA, setIsSearchingAPA] = React.useState(false)
+  const [apaSearchQuery, setApaSearchQuery] = useState("")
+  const [selectedAPAMember, setSelectedAPAMember] = useState<any>(null)
+  const [apaSearchResults, setApaSearchResults] = useState<any[]>([])
+  const [isSearchingAPA, setIsSearchingAPA] = useState(false)
+
+  // Fetch Better Auth accounts
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setIsLoadingAccounts(true)
+        const accountsResult = await authClient.listAccounts()
+        
+        const accounts = accountsResult?.data && Array.isArray(accountsResult.data)
+          ? accountsResult.data
+          : []
+
+        setAuthMethods(accounts)
+      } catch (error) {
+        console.error("Failed to fetch accounts:", error)
+        toast.error("Failed to load connected accounts")
+        setAuthMethods([])
+      } finally {
+        setIsLoadingAccounts(false)
+      }
+    }
+
+    fetchAccounts()
+  }, [])
   
   // Handle FargoRate search with debouncing
-  React.useEffect(() => {
+  useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([])
       return
@@ -78,7 +104,7 @@ export function ConnectedAccounts() {
   }, [searchQuery, searchFargoRatePlayersAction])
   
   // Handle APA search with debouncing
-  React.useEffect(() => {
+  useEffect(() => {
     if (apaSearchQuery.length < 2) {
       setApaSearchResults([])
       return
@@ -100,38 +126,60 @@ export function ConnectedAccounts() {
     return () => clearTimeout(timeoutId)
   }, [apaSearchQuery, searchAPAMembersAction])
   
-  const isLoading = authMethods === undefined || fargoRateAccount === undefined || apaAccount === undefined
+  const isLoading = isLoadingAccounts || fargoRateAccount === undefined || apaAccount === undefined
 
-  const getProviderIcon = (method: any) => {
-    const provider = getProviderName(method)
+  const getProviderIcon = (account: any) => {
+    const provider = getProviderName(account)
     const providerLower = provider.toLowerCase()
     
     if (providerLower.includes("google")) return <Chrome className="h-5 w-5" />
     if (providerLower.includes("apple")) return <Apple className="h-5 w-5" />
     if (providerLower.includes("github")) return <Github className="h-5 w-5" />
-    if (providerLower.includes("email") || providerLower.includes("password")) {
+    if (providerLower.includes("credential") || providerLower.includes("email") || providerLower.includes("password")) {
       return <Mail className="h-5 w-5" />
     }
     return <LinkIcon className="h-5 w-5" />
   }
 
-  const getProviderName = (method: any) => {
-    // Method object from backend has: { method, provider, type }
-    return method.method || method.provider || "Unknown"
+  const getProviderName = (account: any) => {
+    // Better Auth account structure: { providerId, ... }
+    const providerId = account.providerId || account.provider || ""
+    
+    // Map provider IDs to readable names
+    if (providerId === "credential") return "Email & Password"
+    if (providerId === "google") return "Google"
+    if (providerId === "apple") return "Apple"
+    if (providerId === "github") return "GitHub"
+    
+    // Fallback to capitalized provider ID
+    return providerId.charAt(0).toUpperCase() + providerId.slice(1) || "Unknown"
   }
 
-  const getProviderBadgeVariant = (method: any) => {
-    const provider = getProviderName(method).toLowerCase()
-    if (provider.includes("email") || provider.includes("password")) {
+  const getProviderBadgeVariant = (account: any) => {
+    const provider = getProviderName(account).toLowerCase()
+    if (provider.includes("email") || provider.includes("password") || provider.includes("credential")) {
       return "default" as const
     }
     return "secondary" as const
   }
 
-  const handleDisconnect = async (method: any) => {
+  const handleDisconnect = async (account: any) => {
     try {
-      await disconnectAccount({ accountId: method.id })
-      toast.success(`${getProviderName(method)} disconnected successfully`)
+      // Use Better Auth's unlinkAccount method
+      // Requires providerId and optionally accountId
+      await authClient.unlinkAccount({ 
+        providerId: account.providerId,
+        accountId: account.id 
+      })
+      
+      // Refresh accounts list
+      const accountsResult = await authClient.listAccounts()
+      const accounts = accountsResult?.data && Array.isArray(accountsResult.data)
+        ? accountsResult.data
+        : []
+      setAuthMethods(accounts)
+      
+      toast.success(`${getProviderName(account)} disconnected successfully`)
     } catch (error: any) {
       console.error("Failed to disconnect account:", error)
       toast.error(error.message || "Failed to disconnect account")
@@ -197,56 +245,23 @@ export function ConnectedAccounts() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Accounts</CardTitle>
-          <CardDescription>Loading connected accounts...</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (authMethods.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Accounts</CardTitle>
-          <CardDescription>
-            Manage your connected authentication methods
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            No connected accounts found. You can connect accounts when you sign in.
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Group methods by type
-  const passwordMethods = authMethods.filter(m => m.type === "password")
-  const oauthMethods = authMethods.filter(m => m.type === "oauth")
+  // Group accounts by type
+  // Better Auth uses providerId: "credential" for password accounts
+  const passwordMethods = authMethods.filter(m => m.providerId === "credential")
+  const oauthMethods = authMethods.filter(m => m.providerId !== "credential")
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Connected Accounts</h2>
-        <p className="text-sm text-muted-foreground">
+        <HeaderLabel size="2xl">Connected Accounts</HeaderLabel>
+        <span className="text-md text-muted-foreground">
           Manage your connected authentication methods and social accounts
-        </p>
+        </span>
       </div>
 
       {passwordMethods.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Password Authentication</h3>
+          <HeaderLabel size="md">Password Authentication</HeaderLabel>
           {passwordMethods.map((method, index) => (
             <Card key={index}>
               <CardContent>
@@ -325,7 +340,7 @@ export function ConnectedAccounts() {
 
       {/* FargoRate Account Section */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">FargoRate Account</h3>
+        <HeaderLabel size="md">FargoRate Account</HeaderLabel>
         
         {fargoRateAccount ? (
           <Card>
@@ -376,7 +391,7 @@ export function ConnectedAccounts() {
           </Card>
         ) : (
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Link your FargoRate account</p>
@@ -456,7 +471,7 @@ export function ConnectedAccounts() {
 
       {/* APA Account Section */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">APA Account</h3>
+        <HeaderLabel size="md">APA Account (coming soon)</HeaderLabel>
         
         {apaAccount ? (
           <Card>

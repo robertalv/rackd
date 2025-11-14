@@ -52,66 +52,6 @@ export const tables = {
 		.index("by_player", ["playerId"])
 		.index("by_betterAuthId", ["betterAuthId"]),
 
-	sessions: defineTable({
-		expiresAt: v.number(),
-		token: v.string(),
-		createdAt: v.number(),
-		updatedAt: v.number(),
-		ipAddress: v.optional(v.union(v.null(), v.string())),
-		userAgent: v.optional(v.union(v.null(), v.string())),
-		userId: v.id("users"),
-		impersonatedBy: v.optional(v.union(v.null(), v.string())),
-		activeOrganizationId: v.optional(v.union(v.null(), v.string())),
-	})
-		.index("by_user", ["userId"])
-		.index("by_token", ["token"])
-		.index("expiresAt", ["expiresAt"])
-		.index("expiresAt_userId", ["expiresAt", "userId"]),
-
-	accounts: defineTable({
-		accountId: v.string(),
-		providerId: v.string(),
-		userId: v.id("users"),
-		accessToken: v.optional(v.union(v.null(), v.string())),
-		refreshToken: v.optional(v.union(v.null(), v.string())),
-		idToken: v.optional(v.union(v.null(), v.string())),
-		expiresAt: v.optional(v.union(v.null(), v.number())),
-		password: v.optional(v.union(v.null(), v.string())),
-		accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
-		refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
-		scope: v.optional(v.union(v.null(), v.string())),
-		createdAt: v.number(),
-		updatedAt: v.number(),
-	})
-		.index("by_user", ["userId"])
-		.index("accountId", ["accountId"])
-		.index("accountId_providerId", ["accountId", "providerId"])
-		.index("providerId_userId", ["providerId", "userId"]),
-
-	verifications: defineTable({
-		identifier: v.string(),
-		value: v.string(),
-		expiresAt: v.number(),
-		createdAt: v.optional(v.union(v.null(), v.number())),
-		updatedAt: v.optional(v.union(v.null(), v.number())),
-	})
-		.index("by_identifier", ["identifier"])
-		.index("expiresAt", ["expiresAt"]),
-
-	passkeys: defineTable({
-		name: v.optional(v.union(v.null(), v.string())),
-		publicKey: v.string(),
-		userId: v.id("users"),
-		credentialID: v.string(),
-		counter: v.number(),
-		deviceType: v.string(),
-		backedUp: v.boolean(),
-		transports: v.optional(v.union(v.null(), v.string())),
-		createdAt: v.optional(v.union(v.null(), v.number())),
-	})
-		.index("by_user", ["userId"])
-		.index("by_credential_id", ["credentialID"]),
-
 	notifications: defineTable({
 		userId: v.id("users"),
 		type: v.union(
@@ -123,6 +63,7 @@ export const tables = {
 			v.literal("tournament_start"),
 			v.literal("match_ready"),
 			v.literal("match_result"),
+			v.literal("report"),
 		),
 		actorId: v.optional(v.id("users")),
 		postId: v.optional(v.id("posts")),
@@ -243,6 +184,35 @@ export const tables = {
 		.index("by_comment", ["commentId"])
 		.index("by_user", ["userId"])
 		.index("by_comment_and_user", ["commentId", "userId"]),
+
+	hiddenComments: defineTable({
+		commentId: v.id("comments"),
+		userId: v.id("users"),
+	})
+		.index("by_comment", ["commentId"])
+		.index("by_user", ["userId"])
+		.index("by_comment_and_user", ["commentId", "userId"]),
+
+	reports: defineTable({
+		reporterId: v.id("users"),
+		commentId: v.optional(v.id("comments")),
+		postId: v.optional(v.id("posts")),
+		userId: v.optional(v.id("users")), // For reporting users
+		reason: v.string(),
+		description: v.optional(v.string()),
+		status: v.union(
+			v.literal("pending"),
+			v.literal("reviewed"),
+			v.literal("resolved"),
+			v.literal("dismissed"),
+		),
+		createdAt: v.number(),
+	})
+		.index("by_comment", ["commentId"])
+		.index("by_post", ["postId"])
+		.index("by_user", ["userId"])
+		.index("by_reporter", ["reporterId"])
+		.index("by_status", ["status"]),
 
 	hashtags: defineTable({
 		tag: v.string(),
@@ -512,20 +482,10 @@ export const tables = {
 		.index("by_venue", ["venueId"])
 		.index("by_featured", ["isFeatured"]),
 
-	tournamentPlayers: defineTable({
-		tournamentId: v.id("tournaments"),
-		playerId: v.id("players"),
-		seed: v.optional(v.union(v.null(), v.number())),
-		checkedIn: v.boolean(),
-	})
-		.index("by_tournament", ["tournamentId"])
-		.index("by_player", ["playerId"])
-		.index("by_tournament_and_player", ["tournamentId", "playerId"]),
-
 	tournamentRegistrations: defineTable({
 		tournamentId: v.id("tournaments"),
 		playerId: v.id("players"),
-		userId: v.id("users"),
+		userId: v.optional(v.id("users")), // Only set when player profile is linked to a user account
 
 		status: v.union(
 			v.literal("pending"),

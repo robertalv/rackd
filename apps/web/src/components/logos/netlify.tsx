@@ -3,7 +3,7 @@ import * as React from "react";
 export const NetlifyLogo = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 104" fill="none" className={className} {...props}>
-        <g clip-path="url(#clip0_173_235)">
+        <g clipPath="url(#clip0_173_235)">
         <mask id="mask0_173_235" style={{ maskType: "luminance" }} maskUnits="userSpaceOnUse" x="0" y="0" width="255" height="104">
         <path d="M254.775 0H0V103.565H254.775V0Z" fill="white"/>
         </mask>

@@ -21,4 +21,16 @@ function Label({
   )
 }
 
-export { Label }
+type HeaderLabelSize = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
+
+function HeaderLabel({
+  className,
+  size = "md",
+  ...props
+}: React.ComponentProps<typeof Label> & { size?: HeaderLabelSize }) {
+  return (
+    <Label className={cn(`font-bold tracking-tighter text-${size} capitalize`, className)} {...props} />
+  )
+}
+
+export { Label, HeaderLabel }

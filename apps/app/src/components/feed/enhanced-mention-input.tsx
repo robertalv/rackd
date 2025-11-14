@@ -7,6 +7,7 @@ import { Textarea } from "@rackd/ui/components/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar";
 import { Hash } from "lucide-react";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { ProfileAvatar } from "../profile-avatar";
 
 interface EnhancedMentionInputProps {
   value: string;
@@ -156,7 +157,7 @@ export function EnhancedMentionInput({
   const insertMention = (user: MentionSuggestion) => {
     const beforeMention = value.slice(0, suggestionStart);
     const afterMention = value.slice(cursorPosition);
-    const mentionText = `@${user.displayName}`;
+    const mentionText = `@${user.username}`;
     
     const newValue = beforeMention + mentionText + ' ' + afterMention;
     onChange(newValue);
@@ -255,7 +256,7 @@ export function EnhancedMentionInput({
       {showSuggestions && searchResults && searchResults.length > 0 && (
         <div
           ref={suggestionsRef}
-          className="fixed mt-3 bg-accent border border-accent-foreground/10 rounded-lg shadow-lg z-50 max-w-xs w-64"
+          className="fixed mt-3 border border-border rounded-lg shadow-lg z-50 max-w-xs w-64"
           style={{
             top: suggestionPosition.top + 'px',
             left: suggestionPosition.left + 'px'
@@ -271,12 +272,14 @@ export function EnhancedMentionInput({
                 }`}
                 onClick={() => insertMention(user)}
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.image} />
-                  <AvatarFallback className="bg-accent text-accent-foreground text-xs">
-                    {user.displayName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <ProfileAvatar
+                  user={{
+                    displayName: user.displayName,
+                    image: user.image,
+                  }}
+                  size="sm"
+                  className="h-8 w-8"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground truncate">@{user.username}</p>

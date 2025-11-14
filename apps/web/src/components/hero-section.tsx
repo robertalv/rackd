@@ -60,7 +60,7 @@ export default function HeroSection() {
         <>
             <main className="overflow-hidden [--color-primary-foreground:var(--color-white)] [--color-primary:var(--color-green-600)]">
                 <section>
-                    <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-12">
+                    <div className="relative mx-auto max-w-6xl px-6 pb-20">
                         <div className="relative z-10 mx-auto max-w-4xl text-center">
                             <div className="mb-10">
                             <HeroPill 
@@ -68,13 +68,22 @@ export default function HeroSection() {
                                 text={<div className="gap-1"><span className="font-semibold">{waitlistCount?.total ?? 0}</span> people on waitlist</div>}
                             />
                             </div>
+                            <div className="flex flex-col md:flex-row items-center justify-center gap-2">
                             <TextEffect
                                 preset="fade-in-blur"
                                 speedSegment={0.3}
                                 as="h1"
-                                className="text-balance text-5xl font-medium md:text-6xl">
-                                Connect with Rackd
+                                className="text-balance text-6xl font-bold tracking-tighter font-muted">
+                                Connect with
                             </TextEffect>
+                            <TextEffect
+                                preset="fade-in-blur"
+                                speedSegment={0.3}
+                                as="h1"
+                                className="text-balance text-6xl font-bold tracking-tighter text-muted-foreground">
+                                rackd
+                            </TextEffect>
+                            </div>
                             <TextEffect
                                 per="line"
                                 preset="fade-in-blur"
@@ -134,7 +143,7 @@ export default function HeroSection() {
                                     aria-hidden
                                     className="bg-radial from-primary/50 dark:from-primary/25 relative mx-auto mt-32 max-w-4xl to-transparent to-55% text-left">
                                     <div className="bg-background border-border/50 absolute inset-0 mx-auto w-[500px] -translate-x-3 -translate-y-12 rounded-3xl border p-2 [mask-image:linear-gradient(to_bottom,#000_50%,transparent_90%)] sm:-translate-x-6">
-                                        <div className="relative h-96 overflow-hidden rounded-3xl border p-2 pb-12 before:absolute before:inset-0 before:bg-[repeating-linear-gradient(-45deg,var(--color-border),var(--color-border)_1px,transparent_1px,transparent_6px)] before:opacity-50"></div>
+                                        <div className="relative h-64 overflow-hidden rounded-3xl border p-2 pb-12 before:absolute before:inset-0 before:bg-[repeating-linear-gradient(-45deg,var(--color-border),var(--color-border)_1px,transparent_1px,transparent_6px)] before:opacity-50"></div>
                                     </div>
                                     <div className="bg-muted dark:bg-background/50 border-border/50 mx-auto w-[500px] translate-x-4 rounded-3xl border p-2 backdrop-blur-3xl [mask-image:linear-gradient(to_bottom,#000_50%,transparent_90%)] sm:translate-x-8">
                                         <div className="bg-background space-y-2 overflow-hidden rounded-3xl border p-2 shadow-xl dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-black dark:backdrop-blur-3xl">
@@ -143,7 +152,7 @@ export default function HeroSection() {
                                             <div className="bg-muted rounded-3xl p-4 pb-16 dark:bg-white/5"></div>
                                         </div>
                                     </div>
-                                    <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] mix-blend-overlay [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:opacity-5"></div>
+                                    <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] mix-blend-overlay [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:opacity-5 pointer-events-none"></div>
                                 </div>
                             </AnimatedGroup>
                         </div>
@@ -165,7 +174,7 @@ const AppComponent = () => {
         switch (activeTab) {
             case 'overview':
                 return (
-                    <div className="">
+                    <div className="h-64 overflow-y-auto">
                         {/* Tournament Flyer */}
                         <div className="overflow-hidden bg-muted/30 dark:bg-zinc-800/30 border border-border/30 dark:border-zinc-700 mb-4">
                             <div className="aspect-video bg-gradient-to-br from-green-500/20 to-blue-500/20 dark:from-green-500/10 dark:to-blue-500/10 flex items-center justify-center">
@@ -210,7 +219,7 @@ const AppComponent = () => {
 
             case 'players':
                 return (
-                    <div className="p-4 space-y-3">
+                    <div className="h-64 overflow-y-auto p-4 space-y-3">
                         <div className="text-sm font-semibold uppercase text-foreground dark:text-zinc-200 mb-3">
                             Registered Players (24)
                         </div>
@@ -242,7 +251,7 @@ const AppComponent = () => {
 
             case 'matches':
                 return (
-                    <div className="p-4 space-y-3">
+                    <div className="h-64 overflow-y-auto p-4 space-y-3">
                         <div className="text-sm font-semibold uppercase text-foreground dark:text-zinc-200 mb-3">
                             Matches (16)
                         </div>

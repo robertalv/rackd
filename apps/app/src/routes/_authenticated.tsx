@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { Header } from '@/components/layout/header';
+import { AppLayout } from '@/components/layout/app-layout';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ context, location }) => {
@@ -13,11 +13,8 @@ export const Route = createFileRoute('/_authenticated')({
     }
   },
   component: () => (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <Header />
-      <main className="flex flex-1 flex-col overflow-auto">
-        <Outlet />
-      </main>
-    </div>
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
   ),
 });

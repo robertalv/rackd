@@ -4,13 +4,12 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { useAction, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "@rackd/backend/convex/_generated/api"
 import { toast } from "sonner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@rackd/ui/components/card"
 import { Button } from "@rackd/ui/components/button"
 import { Input } from "@rackd/ui/components/input"
-import { Label } from "@rackd/ui/components/label"
+import { HeaderLabel, Label } from "@rackd/ui/components/label"
 import { Textarea } from "@rackd/ui/components/textarea"
 import {
   Form,
@@ -28,11 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@rackd/ui/components/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar"
 import { Camera, Upload, X } from "lucide-react"
-import { calculateProfileCompletion, getProfileCompletionDetails } from "@/lib/profile-utils"
 import { useImageUpload } from "@/hooks/use-image-upload"
-import { InterestTagsManager } from "@/components/settings/interest-tags-manager"
 import { countries as countriesList } from 'countries-list'
 import * as flags from 'country-flag-icons/react/3x2'
 import { ProfileAvatar } from "../profile-avatar"
@@ -53,10 +49,7 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ user }: ProfileSettingsProps) {
-  const profileCompletion = calculateProfileCompletion(user)
-  const completionDetails = getProfileCompletionDetails(user)
-  const updateProfile = useAction(api.users.updateProfile)
-  const getFileUrlAction = useAction(api.files.getFileUrlAction)
+  const updateProfile = useMutation(api.users.updateProfile)
   const [profileImage, setProfileImage] = React.useState<string>(user?.imageUrl || user?.coverImage || "")
 
   // Update profile image when user data changes
@@ -70,18 +63,18 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     category: "player_avatar",
     relatedId: user?._id,
     relatedType: "user",
-    onSuccess: async (imageUrl, storageId) => {
-      // Get the actual URL from the storage ID
+    onSuccess: async (imageUrl, _storageId) => {
+      // imageUrl is already the processed URL from processImageUpload
+      // (could be Cloudflare Images URL for HEIC files, or regular Convex storage URL)
       try {
-        const fileUrl = await getFileUrlAction({ storageId: storageId as any })
-        if (fileUrl) {
-          // Update WorkOS metadata with the image URL
-          await updateProfile({ coverImage: fileUrl })
-          setProfileImage(fileUrl)
+        if (imageUrl) {
+          // Update profile with the processed image URL
+          await updateProfile({ image: imageUrl })
+          setProfileImage(imageUrl)
           toast.success("Profile image updated successfully!")
         }
       } catch (error) {
-        console.error("Failed to get image URL:", error)
+        console.error("Failed to update profile image:", error)
         toast.error("Failed to update profile image. Please try again.")
       }
     },
@@ -91,7 +84,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       displayName: user?.displayName || "",
-      email: user?.email || user?.workos?.email || "",
+      email: user?.email || "",
       bio: user?.bio || "",
       city: user?.city || "",
       region: user?.region || "",
@@ -104,7 +97,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     if (user) {
       form.reset({
         displayName: user.displayName || "",
-        email: user.email || user.workos?.email || "",
+        email: user.email || "",
         bio: user.bio || "",
         city: user.city || "",
         region: user.region || "",
@@ -130,9 +123,6 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     }
   }
 
-  const getUserInitials = (email: string) => {
-    return email?.split('@')[0]?.slice(0, 2)?.toUpperCase() || 'U'
-  }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -146,7 +136,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
   const handleRemoveImage = async () => {
     try {
       setProfileImage("")
-      await updateProfile({ coverImage: "" })
+      await updateProfile({ image: "" })
       toast.success("Profile image removed successfully!")
     } catch (error) {
       console.error("Failed to remove image:", error)
@@ -158,9 +148,9 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     <div className="space-y-6">
       {/* Profile Information */}
       <div className="space-y-2 flex flex-col gap-2">
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Profile Information</span>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-col">
+          <HeaderLabel size="2xl">Profile Information</HeaderLabel>
+          <span className="text-md text-muted-foreground">
             Update your personal information and profile details
             </span>
         </div>
@@ -171,7 +161,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
       <ProfileAvatar
         user={{
           displayName: user?.displayName || "",
-          image: user?.imageUrl || user?.coverImage || user?.workos?.profilePictureUrl || "",
+          image: profileImage || user?.imageUrl || user?.coverImage || "",
           country: user?.country || "",
         }}
         size="xl"
@@ -200,7 +190,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
               </span>
             </Button>
           </label>
-          {(profileImage || user?.image) && (
+          {(profileImage || user?.imageUrl || user?.coverImage) && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -237,7 +227,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
           )}
         />
         <div className="space-y-2">
-          <Label className="text-xs">Username</Label>
+          <Label className="text-[10px]">Username</Label>
           <Input 
             value={user?.username || ""} 
             disabled 
@@ -255,7 +245,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
         name="email"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Email Address *</FormLabel>
+            {/* <FormLabel>Email Address *</FormLabel> */}
             <FormControl>
               <Input placeholder="your@email.com" {...field} disabled />
             </FormControl>
@@ -288,7 +278,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Country</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select country">

@@ -1,7 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { Bell, Heart, MessageCircle, UserPlus, Trophy, Hash } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Trophy, Hash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,101 +16,85 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@rackd/ui/components/t
 import { cn } from "@rackd/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar";
 import { NavigationButton } from "./navigation-button";
+import { Icon, Notification01Icon, TickDouble01Icon, Flag03Icon } from "@rackd/ui/icons";
+import type { NotificationType, NotificationConfig, NotificationHandlers } from "@rackd/types";
+import { HeaderLabel } from "@rackd/ui/components/label";
+import { ProfileAvatar } from "./profile-avatar";
 
-// Define all possible notification types from your schema
-type NotificationType = 
-  | 'follow'
-  | 'like'
-  | 'comment'
-  | 'mention'
-  | 'tournament_invite'
-  | 'tournament_start'
-  | 'match_ready'
-  | 'match_result';
-
-// Configuration for each notification type
-interface NotificationConfig {
-  icon: React.ReactNode;
-  bgColor: string;
-  getMessage: (notification: any) => string;
-  getLink?: (notification: any) => string;
-}
-
-interface NotificationHandlers {
-  handleMarkAsRead: (notificationId: Id<"notifications">) => Promise<void>;
-}
-
-// Configuration for all notification types
 const notificationConfigs: Record<NotificationType, NotificationConfig> = {
   follow: {
     icon: <UserPlus className="h-4 w-4 text-white" />,
     bgColor: "bg-blue-500",
     getMessage: (notification) => 
       `${notification.actor?.displayName || notification.actor?.name || 'Someone'} started following you`,
-    getLink: (notification) => `/${notification.actor?.username}`
+    getLink: (notification) => `/${notification.actor?.username}`,
+    getContext: () => null
   },
   like: {
     icon: <Heart className="h-4 w-4 text-white" />,
     bgColor: "bg-red-500",
     getMessage: (notification) => 
       `${notification.actor?.displayName || notification.actor?.name || 'Someone'} liked your post`,
-    getLink: (notification) => `/post/${notification.postId}`
+    getLink: (notification) => `/post/${notification.postId}`,
+    getContext: (notification) => notification.post?.content?.substring(0, 30) || null
   },
   comment: {
     icon: <MessageCircle className="h-4 w-4 text-white" />,
     bgColor: "bg-green-500",
     getMessage: (notification) => 
       `${notification.actor?.displayName || notification.actor?.name || 'Someone'} commented on your post`,
-    getLink: (notification) => `/post/${notification.postId}`
+    getLink: (notification) => `/post/${notification.postId}`,
+    getContext: (notification) => notification.post?.content?.substring(0, 30) || null
   },
   mention: {
     icon: <Hash className="h-4 w-4 text-white" />,
     bgColor: "bg-purple-500",
     getMessage: (notification) => 
       `${notification.actor?.displayName || notification.actor?.name || 'Someone'} mentioned you`,
-    getLink: (notification) => `/post/${notification.postId}`
+    getLink: (notification) => `/post/${notification.postId}`,
+    getContext: (notification) => notification.post?.content?.substring(0, 30) || null
   },
   tournament_invite: {
     icon: <Trophy className="h-4 w-4 text-white" />,
     bgColor: "bg-yellow-500",
     getMessage: (notification) => 
-      `You've been invited to ${notification.tournament?.name || 'a tournament'}`,
-    getLink: (notification) => `/tournaments/${notification.tournamentId}`
+      `${notification.actor?.displayName || notification.actor?.name || 'Someone'} joined to ${notification.tournament?.name || 'a tournament'}`,
+    getLink: (notification) => `/tournaments/${notification.tournamentId}`,
+    getContext: (notification) => notification.tournament?.name || null
   },
   tournament_start: {
     icon: <Trophy className="h-4 w-4 text-white" />,
     bgColor: "bg-orange-500",
     getMessage: (notification) => 
       `${notification.tournament?.name || 'Tournament'} is starting soon`,
-    getLink: (notification) => `/tournaments/${notification.tournamentId}`
+    getLink: (notification) => `/tournaments/${notification.tournamentId}`,
+    getContext: (notification) => notification.tournament?.name || null
   },
   match_ready: {
     icon: <Trophy className="h-4 w-4 text-white" />,
     bgColor: "bg-indigo-500",
-    getMessage: (notification) => 
+    getMessage: (_notification) => 
       `Your match is ready to begin`,
-    getLink: (notification) => `/tournaments/${notification.tournamentId}/matches/${notification.matchId}`
+    getLink: (notification) => `/tournaments/${notification.tournamentId}/matches/${notification.matchId}`,
+    getContext: (notification) => notification.tournament?.name || null
   },
   match_result: {
     icon: <Trophy className="h-4 w-4 text-white" />,
     bgColor: "bg-emerald-500",
-    getMessage: (notification) => 
+    getMessage: (_notification) => 
       `Match result has been posted`,
-    getLink: (notification) => `/tournaments/${notification.tournamentId}/matches/${notification.matchId}`
+    getLink: (notification) => `/tournaments/${notification.tournamentId}/matches/${notification.matchId}`,
+    getContext: (notification) => notification.tournament?.name || null
+  },
+  report: {
+    icon: <Icon icon={Flag03Icon} className="h-4 w-4 text-white" />,
+    bgColor: "bg-orange-500",
+    getMessage: (notification) => 
+      `${notification.actor?.displayName || notification.actor?.name || 'Someone'} reported your post`,
+    getLink: (notification) => `/post/${notification.postId}`,
+    getContext: (notification) => notification.post?.content?.substring(0, 30) || null
   }
-};
-
-const NotificationIcon = ({ type }: { type: NotificationType }) => {
-  const config = notificationConfigs[type];
-  if (!config) return null;
-
-  return (
-    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", config.bgColor)}>
-      {config.icon}
-    </div>
-  );
 };
 
 const NotificationContent = ({ 
@@ -126,6 +109,8 @@ const NotificationContent = ({
 
   const message = config.getMessage(notification);
   const link = config.getLink?.(notification);
+  const context = config.getContext?.(notification);
+  const timeAgo = formatDistanceToNow(new Date(notification._creationTime), { addSuffix: true });
 
   const handleClick = async () => {
     if (!notification.read) {
@@ -133,48 +118,73 @@ const NotificationContent = ({
     }
   };
 
+  const actorName = notification.actor?.displayName || notification.actor?.name || 'Someone';
+  const actorInitials = actorName.charAt(0).toUpperCase();
+  const actorImage = notification.actor?.image;
+
   const content = (
-    <div className="flex-1">
-      <div className="flex items-start justify-between mb-1">
-        <div className="space-y-1 flex-1">
-          <div className="flex items-center gap-2">
-            {notification.actor && (
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={notification.actor?.image} />
-                <AvatarFallback className="bg-accent text-accent-foreground text-xs">
-                  {notification.actor?.displayName?.charAt(0).toUpperCase() || 
-                   notification.actor?.name?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <p className={cn(
-              "text-sm",
-              !notification.read ? "font-medium" : "font-normal"
-            )}>
-              {message}
+    <div className="flex-1 min-w-0">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className={cn(
+            "text-sm leading-snug",
+            !notification.read ? "font-semibold text-foreground" : "font-normal text-foreground/90"
+          )}>
+            {message}
+          </p>
+          {context && (
+            <p className="text-xs text-muted-foreground">
+              {context}
             </p>
-          </div>
+          )}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {timeAgo}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground ml-4 flex-shrink-0">
-          {formatDistanceToNow(new Date(notification._creationTime), { addSuffix: true })}
-        </span>
+        <div className="flex items-start gap-2 shrink-0">
+          {!notification.read && (
+            <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+          )}
+        </div>
       </div>
-      {!notification.read && (
-        <div className="w-2 h-2 bg-blue-500 rounded-full absolute right-2 top-1/2 -translate-y-1/2" />
-      )}
     </div>
+  );
+
+  const wrapperClass = cn(
+    "flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors rounded-xl",
+    !notification.read && "bg-blue-50/50 dark:bg-blue-950/20"
   );
 
   if (link) {
     return (
-      <Link to={link} onClick={handleClick} className="block">
+      <Link to={link} onClick={handleClick} className={wrapperClass}>
+        {notification.actor && (
+          <ProfileAvatar
+            user={{
+              displayName: notification.actor?.displayName || notification.actor?.name || 'Someone',
+              image: notification.actor?.image || undefined,
+              country: notification.actor?.country || undefined,
+            }}
+            size="sm"
+          />
+        )}
         {content}
       </Link>
     );
   }
 
   return (
-    <div onClick={handleClick} className="cursor-pointer">
+    <div onClick={handleClick} className={cn(wrapperClass, "cursor-pointer")}>
+      {notification.actor && (
+        <ProfileAvatar
+          user={{
+            displayName: notification.actor?.displayName || notification.actor?.name || 'Someone',
+            image: notification.actor?.image || undefined,
+            country: notification.actor?.country || undefined,
+          }}
+          size="sm"
+        />
+      )}
       {content}
     </div>
   );
@@ -208,46 +218,43 @@ export function NotificationsDropdown() {
   };
 
   const unreadNotifications = notifications?.filter(n => !n.read) || [];
-  const readNotifications = notifications?.filter(n => n.read) || [];
+
+  const displayUnreadCount = 
+    unreadCount !== undefined && unreadCount !== null && unreadCount >= 0
+      ? unreadCount 
+      : unreadNotifications.length;
 
   const renderNotification = (notification: any) => (
-    <div 
-      key={notification._id} 
-      className={cn(
-        "flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 relative",
-        !notification.read && "bg-blue-50/50 dark:bg-blue-950/20"
-      )}
-    >
-      <NotificationIcon type={notification.type as NotificationType} />
-      <NotificationContent 
-        notification={notification}
-        handlers={notificationHandlers}
-      />
-    </div>
+    <NotificationContent 
+      key={notification._id}
+      notification={notification}
+      handlers={notificationHandlers}
+    />
   );
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <NavigationButton
-          icon={Bell}
-          count={unreadCount || 0}
+          icon={Notification01Icon}
+          count={displayUnreadCount > 0 ? displayUnreadCount : undefined}
           ariaLabel="Notifications"
           badgePosition="top-right"
           tooltip={
-            unreadCount && unreadCount > 0
-              ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
+            displayUnreadCount > 0
+              ? `${displayUnreadCount} unread notification${displayUnreadCount === 1 ? '' : 's'}`
               : 'No new notifications'
           }
+          tooltipPosition="bottom"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        className="w-[450px] h-[500px] relative top-2 left-2.5" 
-        align="end" 
+        className="w-[450px] h-[500px] relative top-3 right-3" 
+        align="start" 
         side="bottom"
       >
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Notifications</h2>
+          <HeaderLabel size="xl">Notifications</HeaderLabel>
           {unreadNotifications.length > 0 && (
             <Button 
               variant="ghost" 
@@ -255,6 +262,7 @@ export function NotificationsDropdown() {
               onClick={handleMarkAllAsRead}
               className="text-xs"
             >
+              <Icon icon={TickDouble01Icon} className="h-4 w-4" />
               Mark all as read
             </Button>
           )}
@@ -266,18 +274,13 @@ export function NotificationsDropdown() {
               <TabsTrigger value="unread" className="text-xs">
                 Unread
                 {unreadNotifications.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
+                  <Badge variant="secondary" className="text-xs">
                     {unreadNotifications.length}
                   </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="all" className="text-xs">
                 All
-                {notifications && notifications.length > 0 && (
-                  <Badge variant="outline" className="ml-1 text-xs">
-                    {notifications.length}
-                  </Badge>
-                )}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -286,7 +289,7 @@ export function NotificationsDropdown() {
             <TabsContent value="unread" className="space-y-1 p-2 mt-2">
               {unreadNotifications.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <Icon icon={Notification01Icon} className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No new notifications</p>
                 </div>
               ) : (
@@ -297,7 +300,7 @@ export function NotificationsDropdown() {
             <TabsContent value="all" className="space-y-1 p-2 mt-2">
               {!notifications || notifications.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <Icon icon={Notification01Icon} className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No notifications yet</p>
                 </div>
               ) : (
@@ -307,13 +310,14 @@ export function NotificationsDropdown() {
           </div>
         </Tabs>
         
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+        {/* TODO: Add notifications page route */}
+        {/* <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
           <Button variant="outline" asChild className="w-full">
             <Link to="/notifications">
               View All Notifications
             </Link>
           </Button>
-        </div>
+        </div> */}
       </DropdownMenuContent>
     </DropdownMenu>
   );

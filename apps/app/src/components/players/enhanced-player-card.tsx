@@ -175,3 +175,4 @@ export function EnhancedPlayerCard({ player, isOwnProfile = false }: EnhancedPla
   );
 }
 
+

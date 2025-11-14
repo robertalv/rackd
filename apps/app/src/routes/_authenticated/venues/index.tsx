@@ -2,308 +2,452 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { useMemo } from "react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Button } from "@rackd/ui/components/button";
-import { Input } from "@rackd/ui/components/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
+import { Card } from "@rackd/ui/components/card";
 import { Badge } from "@rackd/ui/components/badge";
-import { ScrollArea } from "@rackd/ui/components/scroll-area";
-import { ResizableLayout } from "@/components/layout/resizable-layout";
-import { MapPin, Plus, Edit, Phone, Mail, Globe, Clock, Search, ListFilter } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { VenueFilters } from "@/components/venues/venue-filters";
+import { HeaderLabel } from "@rackd/ui/components/label";
+import { 
+  Icon, 
+  Add01Icon, 
+  CallIcon, 
+  Clock01Icon, 
+  FilterIcon,
+  StoreLocation01Icon,
+  AnalysisTextLinkIcon
+} from "@rackd/ui/icons";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@rackd/ui/components/sheet";
+import { ScrollArea } from "@rackd/ui/components/scroll-area";
 
 export const Route = createFileRoute("/_authenticated/venues/")({
   component: VenuesPage,
 });
 
+type VenueType = "all" | "pool_hall" | "bar" | "sports_facility" | "business" | "residence" | "other";
+
 function VenuesPage() {
   const navigate = useNavigate();
   const { user: currentUser } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<VenueType>("all");
+  const [accessFilter, setAccessFilter] = useState<"all" | "public" | "private" | "membership_needed">("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   const myVenues = useQuery(api.venues.getMyVenues);
   const allVenues = useQuery(api.venues.list, {});
 
-  const venueTypes = [
-    { value: "all", label: "All Types" },
-    { value: "pool_hall", label: "Pool Hall" },
-    { value: "bar", label: "Bar" },
-    { value: "sports_facility", label: "Sports Facility" },
-    { value: "business", label: "Business" },
-    { value: "residence", label: "Residence" },
-    { value: "other", label: "Other" },
-  ];
-
-  // Filter venues based on search and type
-  const filteredVenues = allVenues?.filter((venue) => {
-    const matchesSearch = !searchQuery || 
-      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      venue.address?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Calculate type counts
+  const typeCounts = useMemo(() => {
+    if (!allVenues) return undefined;
     
-    const matchesType = typeFilter === "all" || venue.type === typeFilter;
+    const counts: Record<string, number> = {
+      all: allVenues.length,
+      pool_hall: 0,
+      bar: 0,
+      sports_facility: 0,
+      business: 0,
+      residence: 0,
+      other: 0,
+    };
     
-    return matchesSearch && matchesType;
-  }) || [];
+    allVenues.forEach((venue: any) => {
+      if (venue.type && counts[venue.type] !== undefined) {
+        counts[venue.type]++;
+      }
+    });
+    
+    return counts as Record<VenueType, number>;
+  }, [allVenues]);
 
-  // Left panel: Filters
-  const leftPanelContent = (
-    <div className="flex h-full flex-col">
-      <div className="border-b px-4 py-3.5">
-        <h3 className="font-semibold mb-3">Filter by Type</h3>
-        <div className="space-y-2">
-          {venueTypes.map((type) => (
-            <Button
-              key={type.value}
-              variant={typeFilter === type.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTypeFilter(type.value)}
-              className="w-full justify-start"
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+  // Filter venues based on search, type, and access
+  const filteredVenues = useMemo(() => {
+    if (!allVenues) return [];
+    
+    return allVenues.filter((venue: any) => {
+      const matchesSearch = !searchQuery || 
+        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        venue.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        venue.city?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      {currentUser && myVenues && myVenues.length > 0 && (
-        <ScrollArea className="flex-1 px-4 py-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold mb-2">My Venues</h3>
-            {myVenues.map((venue) => (
-              <Link
-                key={venue._id}
-                to="/venues/$id"
-                params={{ id: venue._id }}
-                className="block p-2 rounded-lg hover:bg-accent transition-colors"
-              >
-                <div className="font-medium text-sm">{venue.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {venue.type.replace('_', ' ')}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-    </div>
-  );
+      const matchesType = typeFilter === "all" || venue.type === typeFilter;
+      const matchesAccess = accessFilter === "all" || venue.access === accessFilter;
+      
+      return matchesSearch && matchesType && matchesAccess;
+    });
+  }, [allVenues, searchQuery, typeFilter, accessFilter]);
 
-  // Right panel: Venue List
-  const rightPanelContent = (
-    <div className="flex h-full flex-col">
-      <div className="border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            {filteredVenues.length} {filteredVenues.length === 1 ? "Venue" : "Venues"}
-          </h2>
-          {currentUser && (
-            <Button onClick={() => navigate({ to: "/venues/new" })}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Venue
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          {filteredVenues.length === 0 ? (
-            <div className="text-center py-12">
-              <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">
-                {searchQuery || typeFilter !== "all" 
-                  ? "No venues match your filters" 
-                  : "No venues found"}
-              </p>
-              {currentUser && (
-                <Button onClick={() => navigate({ to: "/venues/new" })}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add First Venue
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredVenues.map((venue) => (
-                <VenueCard 
-                  key={venue._id} 
-                  venue={venue} 
-                  canEdit={venue.organizerId === currentUser?._id} 
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
-  );
+  // Calculate quick stats
+  const totalVenues = allVenues?.length || 0;
+  const publicVenues = allVenues?.filter((v: any) => v.access === "public").length || 0;
+  const poolHalls = allVenues?.filter((v: any) => v.type === "pool_hall").length || 0;
+
+  const clearFilters = () => {
+    setTypeFilter("all");
+    setAccessFilter("all");
+  };
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Action Bar */}
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search venues..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <PageHeader
+        title="Venues"
+        description="Discover pool halls, bars, and venues in your area"
+        searchPlaceholder="Search venues..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        actionButton={
+          currentUser ? (
+            <Button 
+              className="bg-primary hover:bg-primary/90 text-white"
+              onClick={() => navigate({ to: "/venues/new" })}
+            >
+              <Icon icon={Add01Icon} className="h-4 w-4 mr-2" />
+              Add Venue
+            </Button>
+          ) : undefined
+        }
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        sticky={true}
+        mobileFilterButton={
+          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="lg:hidden">
+                <Icon icon={FilterIcon} className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Icon icon={FilterIcon} className="h-5 w-5 text-primary" />
+                  Filters
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-6">
+                <ScrollArea className="h-[calc(100vh-8rem)]">
+                  <div className="pr-4">
+                    <VenueFilters
+                      selectedType={typeFilter}
+                      onTypeChange={(type) => {
+                        setTypeFilter(type);
+                        setMobileFiltersOpen(false);
+                      }}
+                      selectedAccess={accessFilter}
+                      onAccessChange={setAccessFilter}
+                      typeCounts={typeCounts}
+                      onClearFilters={clearFilters}
+                    />
+                    {currentUser && myVenues && myVenues.length > 0 && (
+                      <Card className="p-4 bg-card border-border mt-4">
+                        <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide">My Venues</h3>
+                        <div className="space-y-2">
+                          {myVenues.map((venue) => (
+                            <Link
+                              key={venue._id}
+                              to="/venues/$id"
+                              params={{ id: venue._id }}
+                              className="block p-2 rounded-lg hover:bg-accent transition-colors"
+                            >
+                              <div className="font-medium text-sm">{venue.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {venue.type.replace('_', ' ')}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </SheetContent>
+          </Sheet>
+        }
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Filters */}
+          <div className="space-y-6">
+            <VenueFilters
+              selectedType={typeFilter}
+              onTypeChange={setTypeFilter}
+              selectedAccess={accessFilter}
+              onAccessChange={setAccessFilter}
+              typeCounts={typeCounts}
+              onClearFilters={clearFilters}
             />
+            
+            {/* Quick Stats */}
+            <Card className="bg-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon icon={AnalysisTextLinkIcon} className="w-5 h-5 text-primary" />
+                  <HeaderLabel size="lg">Quick Stats</HeaderLabel>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Venues</span>
+                  <span className="font-medium text-foreground">{totalVenues.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Public Venues</span>
+                  <span className="font-medium text-foreground">{publicVenues}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pool Halls</span>
+                  <span className="font-medium text-foreground">{poolHalls}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* My Venues */}
+            {currentUser && myVenues && myVenues.length > 0 && (
+              <Card className="bg-card p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon icon={StoreLocation01Icon} className="w-5 h-5 text-primary" />
+                  <HeaderLabel size="lg">My Venues</HeaderLabel>
+                </div>
+                <div className="space-y-2">
+                  {myVenues.map((venue) => (
+                    <Link
+                      key={venue._id}
+                      to="/venues/$id"
+                      params={{ id: venue._id }}
+                      className="block p-2 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      <div className="font-medium text-sm">{venue.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {venue.type.replace('_', ' ')}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+
+            {/* Venue Cards */}
+            {allVenues === undefined ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Icon icon={StoreLocation01Icon} className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                  <p className="text-muted-foreground">Loading venues...</p>
+                </div>
+              </div>
+            ) : filteredVenues.length > 0 ? (
+              <div className={viewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                : "space-y-3"
+              }>
+                {filteredVenues.map((venue: any) => (
+                  <VenueCard 
+                    key={venue._id} 
+                    venue={venue}
+                    viewMode={viewMode}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Icon icon={StoreLocation01Icon} className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-lg">No venues found</p>
+                <p className="text-muted-foreground text-sm mt-2">
+                  {searchQuery || typeFilter !== "all" || accessFilter !== "all"
+                    ? "Try adjusting your search terms or filters"
+                    : "Be the first to add a venue"}
+                </p>
+                {currentUser && (
+                  <Button 
+                    className="mt-4 bg-primary hover:bg-primary/90 text-white"
+                    onClick={() => navigate({ to: "/venues/new" })}
+                  >
+                    <Icon icon={Add01Icon} className="h-4 w-4 mr-2" />
+                    Add First Venue
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Resizable Layout */}
-      <ResizableLayout
-        leftPanel={{
-          content: leftPanelContent,
-          label: "Filters",
-          icon: ListFilter,
-          defaultSize: 25,
-          minSize: 20,
-          maxSize: 40,
-          minWidth: "18rem",
-        }}
-        rightPanel={{
-          content: rightPanelContent,
-          label: "Venues",
-          icon: MapPin,
-          defaultSize: 75,
-        }}
-        defaultTab="right"
-        className="flex-1"
-      />
     </div>
   );
 }
 
-function VenueCard({ venue, canEdit }: { venue: any; canEdit: boolean }) {
+function VenueCard({ venue, viewMode }: { venue: any; viewMode: "grid" | "list" }) {
   const getTypeDisplay = (type: string) => {
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getAccessColor = (access: string) => {
     switch (access) {
-      case 'public': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'private': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'membership_needed': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+      case 'public': return { bg: 'bg-green-100', text: 'text-green-800', label: 'Public' };
+      case 'private': return { bg: 'bg-red-100', text: 'text-red-800', label: 'Private' };
+      case 'membership_needed': return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Membership Required' };
+      default: return { bg: 'bg-muted', text: 'text-muted-foreground', label: 'Unknown' };
     }
   };
 
+  const accessBadge = getAccessColor(venue.access);
+  const location = [venue.city, venue.region, venue.country].filter(Boolean).join(", ");
+
+  if (viewMode === "list") {
+    return (
+      <Link 
+        to="/venues/$id" 
+        params={{ id: venue._id }}
+        className="block group"
+      >
+        <Card className="p-4 bg-card border-border hover:border-primary/20 transition-all hover:shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            {/* Venue Image */}
+            {venue.imageUrl ? (
+              <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                <img
+                  src={venue.imageUrl}
+                  alt={venue.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                <Icon icon={StoreLocation01Icon} className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            )}
+            
+            {/* Left Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors truncate">
+                  {venue.name}
+                </h3>
+                <Badge className={`${accessBadge.bg} ${accessBadge.text} shrink-0 text-xs`}>
+                  {accessBadge.label}
+                </Badge>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                {location && (
+                  <div className="flex items-center gap-1.5">
+                    <Icon icon={StoreLocation01Icon} className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate">{location}</span>
+                  </div>
+                )}
+                {venue.operatingHours && (
+                  <div className="flex items-center gap-1.5">
+                    <Icon icon={Clock01Icon} className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate">{venue.operatingHours}</span>
+                  </div>
+                )}
+                {venue.phone && (
+                  <div className="flex items-center gap-1.5">
+                    <Icon icon={CallIcon} className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate">{venue.phone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Action Button */}
+            <div className="shrink-0">
+              <Button 
+                size="sm"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 group-hover:bg-primary group-hover:text-primary-foreground transition-colors whitespace-nowrap"
+                onClick={(e) => e.preventDefault()}
+              >
+                View
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </Link>
+    );
+  }
+
+  // Grid view
   return (
-    <Link to="/venues/$id" params={{ id: venue._id }}>
-      <Card className="hover:shadow-md transition-shadow overflow-hidden h-full cursor-pointer">
-        {venue.imageUrl && (
-          <div className="aspect-video relative overflow-hidden">
+    <Card className="overflow-hidden bg-card border-border hover:border-primary/50 hover:shadow-xl transition-all group py-0">
+      {/* Venue Image */}
+      <div className="relative h-40 overflow-hidden bg-muted">
+        {venue.imageUrl ? (
+          <>
             <img
               src={venue.imageUrl}
               alt={venue.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
-            {canEdit && (
-              <div className="absolute top-2 right-2">
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+            <Icon icon={StoreLocation01Icon} className="h-16 w-16 text-muted-foreground/30" />
           </div>
         )}
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg mb-2">{venue.name}</CardTitle>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">
-                  {getTypeDisplay(venue.type)}
-                </Badge>
-                <Badge className={`text-xs ${getAccessColor(venue.access)}`}>
-                  {venue.access.replace('_', ' ')}
-                </Badge>
-              </div>
-            </div>
-            {canEdit && !venue.imageUrl && (
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {venue.address && (
-            <div className="flex items-start gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-              <span className="text-muted-foreground line-clamp-2">{venue.address}</span>
+        
+        {/* Access Badge */}
+        <div className="absolute top-3 right-3">
+          <Badge className={`${accessBadge.bg} ${accessBadge.text}`}>
+            {accessBadge.label}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-bold text-foreground text-lg mb-1 line-clamp-2">
+          {venue.name}
+        </h3>
+        {venue.description && (
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{venue.description}</p>
+        )}
+
+        {/* Info Grid */}
+        <div className="space-y-2 mb-4 text-sm">
+          {location && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Icon icon={StoreLocation01Icon} className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="truncate">{location}</span>
             </div>
           )}
           {venue.operatingHours && (
-            <div className="flex items-start gap-2 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-              <span className="text-muted-foreground line-clamp-1">{venue.operatingHours}</span>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Icon icon={Clock01Icon} className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="truncate">{venue.operatingHours}</span>
             </div>
           )}
-          {venue.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {venue.description}
-            </p>
-          )}
-          <div className="flex items-center gap-4 pt-2">
-            {venue.phone && (
-              <a
-                href={`tel:${venue.phone}`}
-                className="text-muted-foreground hover:text-primary"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Phone className="h-4 w-4" />
-              </a>
-            )}
-            {venue.email && (
-              <a
-                href={`mailto:${venue.email}`}
-                className="text-muted-foreground hover:text-primary"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Mail className="h-4 w-4" />
-              </a>
-            )}
-            {venue.website && (
-              <a
-                href={venue.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Globe className="h-4 w-4" />
-              </a>
-            )}
-          </div>
-          {venue.socialLinks && venue.socialLinks.length > 0 && (
-            <div className="flex items-center gap-2 pt-1">
-              {venue.socialLinks.map((link: any, index: number) => (
-                <a
-                  key={index}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs hover:underline"
-                  title={link.platform}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {link.icon}
-                </a>
-              ))}
+          {venue.phone && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Icon icon={CallIcon} className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="truncate">{venue.phone}</span>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+
+        {/* Type Badge */}
+        <Badge variant="outline" className="mb-4">
+          {getTypeDisplay(venue.type)}
+        </Badge>
+
+        {/* View Button */}
+        <Link to="/venues/$id" params={{ id: venue._id }}>
+          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+            View Venue
+          </Button>
+        </Link>
+      </div>
+    </Card>
   );
 }
 

@@ -20,7 +20,6 @@ import type * as matches from "../matches.js";
 import type * as notifications from "../notifications.js";
 import type * as players from "../players.js";
 import type * as posts from "../posts.js";
-import type * as sessions from "../sessions.js";
 import type * as tournamentRegistrations from "../tournamentRegistrations.js";
 import type * as tournaments from "../tournaments.js";
 import type * as users from "../users.js";
@@ -54,7 +53,6 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   players: typeof players;
   posts: typeof posts;
-  sessions: typeof sessions;
   tournamentRegistrations: typeof tournamentRegistrations;
   tournaments: typeof tournaments;
   users: typeof users;

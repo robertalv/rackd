@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
 import { Card, CardContent, CardHeader } from "@rackd/ui/components/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@rackd/ui/components/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@rackd/ui/components/dropdown-menu";
 import { Textarea } from "@rackd/ui/components/textarea";
-import { Heart, MessageCircle, Share, MoreHorizontal, Pin, Edit, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { PostImage } from "./post-image";
@@ -16,26 +14,43 @@ import { CommentInput } from "./comment-input";
 import { Comment } from "./comment";
 import { MentionText } from "./mention-text";
 import { TournamentPostCard } from "./tournament-post-card";
+import { ReportPostDialog } from "./report-post-dialog";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@rackd/ui/components/tooltip";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ProfileAvatar } from "../profile-avatar";
+import { Icon, PinIcon, MoreVerticalIcon, PencilEdit02Icon, Delete03Icon, FavouriteIcon, Comment01Icon, Share01Icon, Flag03Icon } from "@rackd/ui/icons";
+import { SharePostModal } from "./share-post-modal";
+
 interface PostCardProps {
-  post: any; // We'll type this properly later
+  post: any;
 }
 
 export function PostCard({ post }: PostCardProps) {
-  // If this post has a tournament, use the special tournament post card
   if (post.tournamentId && post.tournament) {
     return <TournamentPostCard post={post} />;
   }
   const [showComments, setShowComments] = useState(false);
+  const [showHiddenComments, setShowHiddenComments] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   
   const { user: currentUser } = useCurrentUser();
   const isLiked = useQuery(api.posts.isLiked, { postId: post._id });
-  const comments = useQuery(api.posts.getComments, { postId: post._id });
+  const comments = useQuery(api.posts.getComments, { 
+    postId: post._id,
+    includeHidden: showHiddenComments,
+  });
+  const hiddenCommentsCount = useQuery(api.posts.getHiddenCommentsCount, { postId: post._id });
   const postStats = useQuery(api.posts.getPostCounterStats, { postId: post._id });
+  
+  // Automatically hide hidden comments section when count reaches 0
+  useEffect(() => {
+    if (hiddenCommentsCount === 0 && showHiddenComments) {
+      setShowHiddenComments(false);
+    }
+  }, [hiddenCommentsCount, showHiddenComments]);
   
   const isPostOwner = currentUser?._id === post.userId;
   
@@ -115,23 +130,23 @@ export function PostCard({ post }: PostCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.user?.image || undefined} />
-              <AvatarFallback className="bg-accent text-accent-foreground">
-                {post.user?.displayName?.charAt(0).toUpperCase() || 
-                 post.user?.name?.charAt(0).toUpperCase() || 
-                 post.user?.firstName?.charAt(0).toUpperCase() || 
-                 "U"}
-              </AvatarFallback>
-            </Avatar>
+            <ProfileAvatar
+              user={post.user}
+              size="sm"
+            />
             <div>
               <div className="flex items-center space-x-2">
-                <Link 
-                  to={`/${post.user?.username}`}
-                  className="font-semibold hover:underline"
-                >
-                  {post.user?.displayName}
-                </Link>
+                {post.user?.username ? (
+                  <Link 
+                    to="/$username"
+                    params={{ username: post.user.username }}
+                    className="font-semibold hover:underline"
+                  >
+                    {post.user?.displayName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold">{post.user?.displayName}</span>
+                )}
                 {post.type !== "post" && (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPostTypeColor(post.type)}`}>
                     {getPostTypeLabel(post.type)}
@@ -143,38 +158,50 @@ export function PostCard({ post }: PostCardProps) {
               </p>
             </div>
           </div>
-          {isPostOwner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <Icon icon={MoreVerticalIcon} className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isPostOwner && (
+                <>
+                  <DropdownMenuItem 
+                    className="flex items-center"
+                    onClick={handlePin}
+                  >
+                    <Icon icon={PinIcon} className="h-4 w-4" />
+                    <span>{post.isPinned ? "Unpin post" : "Pin post"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="flex items-center"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Icon icon={PencilEdit02Icon} className="h-4 w-4" />
+                    <span>Edit post</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="flex items-center text-red-600"
+                    onClick={handleDelete}
+                  >
+                    <Icon icon={Delete03Icon} className="h-4 w-4" />
+                    <span>Delete</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+              {!isPostOwner && (
                 <DropdownMenuItem 
-                  className="flex items-center space-x-2"
-                  onClick={handlePin}
+                  className="flex items-center"
+                  onClick={() => setShowReportDialog(true)}
                 >
-                  <Pin className="h-4 w-4" />
-                  <span>{post.isPinned ? "Unpin post" : "Pin post"}</span>
+                  <Icon icon={Flag03Icon} className="h-4 w-4" />
+                  <span>Report post</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="flex items-center space-x-2"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit className="h-4 w-4" />
-                  <span>Edit post</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="flex items-center space-x-2 text-red-600"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
       
@@ -217,7 +244,7 @@ export function PostCard({ post }: PostCardProps) {
             <div className="space-y-2">
               {post.isPinned && (
                 <div className="flex items-center space-x-1 text-xs text-blue-600 font-medium">
-                  <Pin className="h-3 w-3" />
+                  <Icon icon={PinIcon} className="h-3 w-3" />
                   <span>Pinned Post</span>
                 </div>
               )}
@@ -257,11 +284,12 @@ export function PostCard({ post }: PostCardProps) {
           )}
           
           {/* Tournament/Match context */}
-          {post.tournament && (
+          {post.tournament && post.tournamentId && (
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm font-medium">Tournament</p>
               <Link 
-                to={`/tournaments/${post.tournamentId}`}
+                to="/tournaments/$id"
+                params={{ id: post.tournamentId }}
                 className="text-sm text-primary hover:underline"
               >
                 {post.tournament.name}
@@ -278,7 +306,7 @@ export function PostCard({ post }: PostCardProps) {
                 className={`flex items-center ${isLiked ? "text-red-500" : ""}`}
                 onClick={handleLike}
               >
-                <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+                <Icon icon={FavouriteIcon} className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
                 <span className="text-sm">{postStats?.likeCount ?? post.likeCount}</span>
               </Button>
               
@@ -288,23 +316,20 @@ export function PostCard({ post }: PostCardProps) {
                 className="flex items-center"
                 onClick={() => setShowComments(!showComments)}
               >
-                <MessageCircle className="h-4 w-4" />
+                <Icon icon={Comment01Icon} className="h-4 w-4" />
                 <span className="text-sm">{postStats?.commentCount ?? post.commentCount}</span>
               </Button>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-              <div>
-              <Button disabled variant="ghost" size="sm" className="flex items-center space-x-2">
-                <Share className="h-4 w-4" />
-                <span className="text-sm">{post.shareCount}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center space-x-2"
+                onClick={() => setShowShareModal(true)}
+              >
+                <Icon icon={Share01Icon} className="h-4 w-4" />
+                {/* TODO: Create a share by messages and display the count */}
+                {/* <span className="text-sm">{post.shareCount}</span> */}
               </Button>
-              </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" align="center">
-                <p>Share this post -- Coming soon!</p>
-              </TooltipContent>
-              </Tooltip>
 
             </div>
           </div>
@@ -312,6 +337,23 @@ export function PostCard({ post }: PostCardProps) {
           {/* Comments section */}
           {showComments && (
             <div className="space-y-4 pt-3 border-t">
+              {/* Show hidden comments toggle */}
+              {hiddenCommentsCount !== undefined && hiddenCommentsCount > 0 && (
+                <div className="pb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowHiddenComments(!showHiddenComments)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {showHiddenComments 
+                      ? `Hide ${hiddenCommentsCount} hidden ${hiddenCommentsCount === 1 ? 'comment' : 'comments'}`
+                      : `Show ${hiddenCommentsCount} hidden ${hiddenCommentsCount === 1 ? 'comment' : 'comments'}`
+                    }
+                  </Button>
+                </div>
+              )}
+              
               {/* Top-level comments */}
               {comments && comments.length > 0 && (
                 <div className="space-y-4">
@@ -339,6 +381,21 @@ export function PostCard({ post }: PostCardProps) {
           )}
         </div>
       </CardContent>
+      
+      <SharePostModal
+        open={showShareModal}
+        onOpenChange={setShowShareModal}
+        postId={post._id}
+        postContent={post.content}
+        postAuthor={post.user?.displayName || post.user?.username}
+      />
+      
+      {/* Report Post Dialog */}
+      <ReportPostDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        postId={post._id}
+      />
     </Card>
   );
 }

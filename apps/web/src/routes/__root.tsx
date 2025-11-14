@@ -32,7 +32,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Relio",
+				title: "rackd | your AI-powered billiard partner",
 			},
 		],
 		links: [
@@ -49,7 +49,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 function RootDocument() {
 	const isFetching = useRouterState({ select: (s) => s.isLoading });
 	return (
-		<html lang="en" className="system">
+		<html lang="en" className="light">
 			<head>
 				<HeadContent />
 			</head>

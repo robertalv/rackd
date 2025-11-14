@@ -9,8 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@rackd/ui/components/dialog"
-import { Monitor, Smartphone, Tablet, Globe } from "lucide-react"
 import { Separator } from "@rackd/ui/components/separator"
+import { formatDate } from "@/lib/utils"
+import { Icon } from "@rackd/ui/icons"
+import { EarthIcon, SmartPhone01Icon, Tablet02Icon, ComputerIcon } from "@rackd/ui/icons"
 
 interface SessionDetailDialogProps {
   open: boolean
@@ -27,32 +29,23 @@ export function SessionDetailDialog({
 }: SessionDetailDialogProps) {
   if (!session) return null
 
-  const formatDate = (dateValue?: string | number | null) => {
-    if (!dateValue) return "Unknown"
-    try {
-      const date = typeof dateValue === "number" ? new Date(dateValue) : new Date(dateValue)
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    } catch {
-      return String(dateValue)
+  const getDeviceIcon = (userAgent?: string | null) => {
+    if (!userAgent) return <Icon icon={EarthIcon} className="h-4 w-4" />
+    const lower = userAgent.toLowerCase()
+    
+    if (lower.includes("expo")) {
+      return <Icon icon={SmartPhone01Icon} className="h-4 w-4" />
     }
-  }
-
-  const getDeviceIcon = () => {
-    if (!session.deviceName) return <Globe className="h-12 w-12 text-muted-foreground" />
-    const lower = session.deviceName.toLowerCase()
-    if (lower.includes("iphone") || lower.includes("android") || lower.includes("mobile")) {
-      return <Smartphone className="h-12 w-12 text-muted-foreground" />
+    
+    if (lower.includes("iphone") || (lower.includes("android") && lower.includes("mobile"))) {
+      return <Icon icon={SmartPhone01Icon} className="h-4 w-4" />
     }
-    if (lower.includes("ipad") || lower.includes("tablet")) {
-      return <Tablet className="h-12 w-12 text-muted-foreground" />
+    
+    if (lower.includes("ipad") || (lower.includes("android") && !lower.includes("mobile"))) {
+      return <Icon icon={Tablet02Icon} className="h-4 w-4" />
     }
-    return <Monitor className="h-12 w-12 text-muted-foreground" />
+    
+    return <Icon icon={ComputerIcon} className="h-4 w-4" />
   }
 
   const getStatusBadge = () => {
@@ -76,7 +69,6 @@ export function SessionDetailDialog({
     if (!authMethod) return "Unknown"
     const method = authMethod.toLowerCase()
     if (method === "oauth" || method.includes("oauth")) {
-      // Try to extract provider from userAgent or return generic
       if (session.userAgent?.toLowerCase().includes("google")) {
         return "Google OAuth"
       }

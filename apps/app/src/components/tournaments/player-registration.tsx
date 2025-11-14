@@ -9,7 +9,7 @@ import { Badge } from "@rackd/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
 import { useState } from "react";
 import { Search, UserPlus, CheckCircle, Clock, Plus, Trash2, Loader2, DollarSign } from "lucide-react";
-import type { PlayerSearchResult } from "@/lib/types";
+import type { PlayerSearchResult } from "@rackd/types";
 import { searchFargoRatePlayers, formatFargoRating, formatRobustness } from "@/lib/fargorate-api";
 
 type Props = {

@@ -632,7 +632,7 @@ export const addPlayer = mutation({
     await ctx.db.insert("tournamentRegistrations", {
       tournamentId: args.tournamentId,
       playerId: args.playerId,
-      userId: player.userId || userId,
+      userId: player.userId || undefined, // Only set userId if player has a linked account
       status: "approved",
       checkedIn: false,
       seed: null,

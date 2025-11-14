@@ -1,7 +1,7 @@
 import { cn } from "@rackd/ui/lib/utils";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
-import { Moon, Sun } from "lucide-react";
 import { TooltipWrapper } from "./tooltip-wrapper";
+import { Icon, Sun02Icon, Moon02Icon } from "@rackd/ui/icons";
 
 // This will be imported from the app
 interface ThemeToggleProps {
@@ -37,7 +37,7 @@ export function ThemeToggle({ useTheme }: ThemeToggleProps) {
               "bg-background pointer-events-none flex size-5 items-center justify-center rounded-full shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
             )}
           >
-            {isDark ? <Moon className="size-3" /> : <Sun className="size-3" />}
+            {isDark ? <Icon icon={Moon02Icon} className="size-3" /> : <Icon icon={Sun02Icon} className="size-3" />}
           </SwitchPrimitives.Thumb>
         </SwitchPrimitives.Root>
       </TooltipWrapper>

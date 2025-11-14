@@ -81,7 +81,7 @@ function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
 	return (
 		<RootDocument>
-			<ThemeProvider defaultTheme="dark">
+			<ThemeProvider defaultTheme="light">
 				<ConvexBetterAuthProvider
 					client={context.convexClient}
 					authClient={authClient}
@@ -98,7 +98,7 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 	return (
-		<html lang="en" className="dark" suppressHydrationWarning>
+		<html lang="en" className="light" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>

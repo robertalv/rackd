@@ -6,9 +6,11 @@ import { api } from "@rackd/backend/convex/_generated/api";
 import { PostCard } from "@/components/feed/post-card";
 import { PostComposer } from "@/components/feed/post-composer";
 import { Card, CardContent } from "@rackd/ui/components/card";
-import { Loader2, Pin } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Icon, PinIcon } from "@rackd/ui/icons";
 import { useFeedRefresh } from "@/context/feed-context";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { HeaderLabel } from "@rackd/ui/components/label";
 
 interface ActivityFeedProps {
   userId?: Id<"users">;
@@ -59,9 +61,11 @@ export function ActivityFeed({
     );
   }
 
-  // Separate pinned and regular posts
-  const pinnedPosts = posts.filter(post => post.isPinned);
-  const regularPosts = posts.filter(post => !post.isPinned);
+  // In user profiles, separate pinned posts. In feed, show all posts together
+  const pinnedPosts = feedType === "user" ? posts.filter(post => post.isPinned) : [];
+  const regularPosts = feedType === "user" 
+    ? posts.filter(post => !post.isPinned) // Separate pinned in profiles
+    : posts; // Show all posts together in feed
 
   return (
     <div className="space-y-6">
@@ -85,25 +89,28 @@ export function ActivityFeed({
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Pinned Posts Section */}
-          {pinnedPosts.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-1 text-sm font-medium text-muted-foreground">
-                <Pin className="h-3 w-3" />
-                <span className="text-xs">Pinned Posts</span>
-              </div>
-              <div className="space-y-4">
-                {pinnedPosts.map((post) => (
-                  <PostCard key={post._id} post={post} />
-                ))}
-              </div>
-            </div>
+          {feedType === "user" && (
+            // In user profiles, show pinned posts first, then regular posts
+            <>
+              {posts.filter(post => post.isPinned).length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-1 text-sm font-medium text-muted-foreground">
+                    <Icon icon={PinIcon} className="h-4 w-4" />
+                    <HeaderLabel size="sm">Pinned Posts</HeaderLabel>
+                  </div>
+                  <div className="space-y-4">
+                    {posts.filter(post => post.isPinned).map((post) => (
+                      <PostCard key={post._id} post={post} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
-
           {/* Regular Posts Section */}
           {regularPosts.length > 0 && (
             <div className="space-y-4">
-              {pinnedPosts.length > 0 && (
+              {feedType === "user" && posts.filter(post => post.isPinned).length > 0 && (
                 <div className="flex items-center space-x-1 text-xs font-medium text-muted-foreground">
                   <span className="text-xs">Recent Posts</span>
                 </div>

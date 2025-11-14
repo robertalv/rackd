@@ -5,10 +5,10 @@ import { motion } from "motion/react"
 
 type AnimatedBadgeProps = {
   text?: string
-  color?: string // hex or css color value
-  href?: string // optional redirect link
-  LinkComponent?: any // Allow passing in Link component from consuming app
-  onClick?: () => void // optional click handler
+  color?: string
+  href?: string
+  LinkComponent?: any
+  onClick?: () => void
 }
 
 function hexToRgba(hexColor: string, alpha: number): string {
@@ -27,7 +27,7 @@ function hexToRgba(hexColor: string, alpha: number): string {
 }
 
 export const AnimatedBadge = ({
-  text = "Introducing Eldoraui",
+  text = "Complete Profile",
   color = "#22d3ee",
   href,
   LinkComponent,
@@ -47,7 +47,7 @@ export const AnimatedBadge = ({
         ease: "easeInOut",
       }}
       viewport={{ once: true }}
-      className={`group relative flex max-w-fit items-center justify-center gap-3 px-4 py-1 transition-colors hover:bg-accent/50 border border-transparent hover:border ${onClick ? 'cursor-pointer' : ''}`}
+      className={`group rounded-md relative flex max-w-fit items-center justify-center gap-3 px-4 py-1 transition-colors hover:bg-accent/50 border border-transparent hover:border ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-full h-20 w-[165px]">
@@ -58,9 +58,6 @@ export const AnimatedBadge = ({
           viewBox="0 0 50 50"
           fill="none"
         >
-          {/* <g stroke="#fff" strokeWidth="0.4">
-              <path d="M 69 49.8 h -30 q -3 0 -3 -3 v -15 q 0 -3 -3 -3 h -23 q -3 0 -3 -3 v -15 q 0 -3 -3 -3 h -30" />
-            </g> */}
           <g mask="url(#ml-mask-1)">
             <circle
               className="multiline ml-light-1"

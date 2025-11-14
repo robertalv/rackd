@@ -13,11 +13,10 @@ import { Button } from "@rackd/ui/components/button";
 import { Badge } from "@rackd/ui/components/badge";
 import { Card, CardContent } from "@rackd/ui/components/card";
 import { Avatar, AvatarFallback } from "@rackd/ui/components/avatar";
-import { ChevronLeft, ChevronRight, Trophy, TrendingUp } from "lucide-react";
 import { getCountryName } from "@/lib/fargorate-api";
 import { hasFlag } from 'country-flag-icons';
-import { cn } from "@rackd/ui/lib/utils";
-import type { FargoRatePlayer } from "@/lib/types";
+import type { FargoRatePlayer } from "@rackd/types";
+import { Icon, ChampionIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@rackd/ui/icons";
 
 interface FargoWorldRankingsTableProps {
   players: FargoRatePlayer[];
@@ -141,7 +140,7 @@ export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorl
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <Icon icon={ChampionIcon} className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No players found</h3>
             <p className="text-muted-foreground">
               {searchQuery.length > 0 
@@ -159,8 +158,8 @@ export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorl
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-yellow-500" />
+          <h2 className="text-2xl font-bold tracking-tighter flex items-center gap-2">
+            <Icon icon={ChampionIcon} className="h-6 w-6 text-yellow-500" />
             World Pro Rankings
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -293,7 +292,7 @@ export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorl
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <Icon icon={ArrowLeft01Icon} className="h-4 w-4" />
               Previous
             </Button>
             
@@ -346,7 +345,7 @@ export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorl
               disabled={currentPage === totalPages}
             >
               Next
-              <ChevronRight className="h-4 w-4" />
+              <Icon icon={ArrowRight01Icon} className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -354,4 +353,5 @@ export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorl
     </div>
   );
 }
+
 

@@ -9,10 +9,12 @@ import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { useThemeColor } from "heroui-native";
 import * as Sentry from '@sentry/react-native';
+import { AnimatedSplashScreen } from "@/components/animated-splash-screen";
+import * as SplashScreen from "expo-splash-screen";
 
 Sentry.init({
   dsn: 'https://20efd8f8c9a4a5623e7f015ab9b892d1@o4510354603835392.ingest.us.sentry.io/4510354606850048',
@@ -28,6 +30,9 @@ Sentry.init({
   // uncomment the line below to enable Spotlight (https://spotlightjs.com)
   // spotlight: __DEV__,
 });
+
+// Prevent the native splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL || "";
 const convex = new ConvexReactClient(convexUrl, {
@@ -96,15 +101,50 @@ function StackLayout() {
 }
 
 export default Sentry.wrap(function Layout() {
+	const [isSplashComplete, setIsSplashComplete] = useState(false);
+	const [isReady, setIsReady] = useState(false);
+
+	useEffect(() => {
+		// Hide the native splash screen immediately and synchronously
+		// This ensures only our animated splash screen is visible
+		(async () => {
+			try {
+				await SplashScreen.hideAsync();
+			} catch (error) {
+				// Ignore errors if splash screen is already hidden
+			} finally {
+				// Set ready state after hiding native splash to prevent double rendering
+				setIsReady(true);
+			}
+		})();
+	}, []);
+
+	// Memoize the callback to prevent unnecessary re-renders of AnimatedSplashScreen
+	const handleAnimationComplete = useCallback(() => {
+		setIsSplashComplete(true);
+	}, []);
+
+	// Don't render anything until native splash is hidden
+	if (!isReady) {
+		return null;
+	}
+
 	return (
 		<ConvexBetterAuthProvider client={convex} authClient={authClient}>
 			<GestureHandlerRootView style={{ flex: 1 }}>
 				<KeyboardProvider>
 					<AppThemeProvider>
 						<HeroUINativeProvider>
-							<AuthGuard>
-								<StackLayout />
-							</AuthGuard>
+							{!isSplashComplete && (
+								<AnimatedSplashScreen
+									onAnimationComplete={handleAnimationComplete}
+								/>
+							)}
+							{isSplashComplete && (
+								<AuthGuard>
+									<StackLayout />
+								</AuthGuard>
+							)}
 						</HeroUINativeProvider>
 					</AppThemeProvider>
 				</KeyboardProvider>

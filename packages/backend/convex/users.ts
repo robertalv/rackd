@@ -4,7 +4,6 @@ import { v } from "convex/values";
 import schema from './schema';
 import { crud } from 'convex-helpers/server/crud';
 import type { Id } from "./_generated/dataModel";
-import { api } from "./_generated/api";
 import { getCurrentUser, getCurrentUserOrThrow, getCurrentUserId } from "./lib/utils";
 
 const userFields = schema.tables.users.validator.fields;
@@ -248,15 +247,26 @@ export const getProfile = query({
 export const updateProfile = mutation({
   args: {
     name: v.optional(v.string()),
+    displayName: v.optional(v.string()),
     bio: v.optional(v.string()),
     city: v.optional(v.string()),
+    region: v.optional(v.string()),
+    country: v.optional(v.string()),
     image: v.optional(v.string()),
+    coverImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     
     const updates: {
       name?: string;
+      displayName?: string;
+      bio?: string;
+      city?: string;
+      region?: string;
+      country?: string;
+      image?: string;
+      coverImage?: string;
       updatedAt: number;
     } = {
       updatedAt: Date.now(),
@@ -266,8 +276,34 @@ export const updateProfile = mutation({
       updates.name = args.name;
     }
     
+    if (args.displayName !== undefined) {
+      updates.displayName = args.displayName;
+    }
+    
+    if (args.bio !== undefined) {
+      // Allow empty string to clear the bio (convert to undefined)
+      updates.bio = args.bio.trim() === "" ? undefined : args.bio;
+    }
+    
+    if (args.city !== undefined) {
+      // Allow empty string to clear the city (convert to undefined)
+      updates.city = args.city.trim() === "" ? undefined : args.city;
+    }
+    
+    if (args.region !== undefined) {
+      updates.region = args.region || undefined;
+    }
+    
+    if (args.country !== undefined) {
+      updates.country = args.country || undefined;
+    }
+    
     if (args.image !== undefined) {
-      (updates as any).image = args.image;
+      updates.image = args.image;
+    }
+    
+    if (args.coverImage !== undefined) {
+      updates.coverImage = args.coverImage || undefined;
     }
     
     await ctx.db.patch(user._id, updates);

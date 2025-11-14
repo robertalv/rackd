@@ -302,3 +302,49 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Query: Get tournaments by venue
+export const getTournamentsByVenue = query({
+  args: { venueId: v.id("venues") },
+  handler: async (ctx, args) => {
+    const tournaments = await ctx.db
+      .query("tournaments")
+      .collect();
+
+    // Filter tournaments by venueId
+    const venueTournaments = tournaments.filter(
+      (tournament) => tournament.venueId === args.venueId
+    );
+
+    // Get organizer info for each tournament
+    return await Promise.all(
+      venueTournaments.map(async (tournament) => {
+        let organizer = null;
+        if (tournament.organizerId) {
+          organizer = await ctx.db.get(tournament.organizerId);
+        }
+
+        return {
+          ...tournament,
+          organizerName: organizer?.name || "Unknown",
+        };
+      })
+    );
+  },
+});
+
+export const getTablesByVenue = query({
+  args: { venueId: v.id("venues") },
+  handler: async (ctx, args) => {
+    const tables = await ctx.db
+      .query("tables")
+      .filter((q) => q.eq(q.field("venueId"), args.venueId))
+      .collect();
+
+    return tables.map((table) => ({
+      ...table,
+      tableNumber: table.startNumber,
+      status: table.status || "OPEN",
+    }));
+  },
+});

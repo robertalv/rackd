@@ -6,15 +6,16 @@ import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@rackd/ui/components/dropdown-menu";
-import { Heart, MoreVertical, Flag, EyeOff, Edit, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { CommentInput } from "./comment-input";
 import { MentionText } from "./mention-text";
+import { ReportCommentDialog } from "./report-comment-dialog";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Badge } from "@rackd/ui/components/badge";
 import { Textarea } from "@rackd/ui/components/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { Icon, MoreVerticalIcon, FavouriteIcon, Delete03Icon, PencilEdit02Icon, Flag03Icon, ViewOffSlashIcon, ViewIcon } from "@rackd/ui/icons";
 
 interface CommentProps {
   comment: any;
@@ -29,6 +30,7 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   
   // Get current user and post data
   const { user: currentUser } = useCurrentUser();
@@ -49,6 +51,9 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
   const unlikeComment = useMutation(api.posts.unlikeComment);
   const editComment = useMutation(api.posts.editComment);
   const deleteComment = useMutation(api.posts.deleteComment);
+  const hideComment = useMutation(api.posts.hideComment);
+  const unhideComment = useMutation(api.posts.unhideComment);
+  const isHidden = comment.isHidden || false;
   
   const handleLike = async () => {
     try {
@@ -103,6 +108,22 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
     setIsEditing(false);
   };
 
+  const handleHide = async () => {
+    try {
+      await hideComment({ commentId: comment._id });
+    } catch (error) {
+      console.error("Error hiding comment:", error);
+    }
+  };
+
+  const handleUnhide = async () => {
+    try {
+      await unhideComment({ commentId: comment._id });
+    } catch (error) {
+      console.error("Error unhiding comment:", error);
+    }
+  };
+
   return (
     <div className={`flex space-x-3 ${level > 0 ? 'mt-3' : ''}`}>
       {/* Avatar */}
@@ -119,14 +140,15 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
       <div className="flex-1 min-w-0">
         {/* Comment content */}
         <div 
-          className="relative bg-muted rounded-lg p-3 hover:bg-muted/80 transition-colors"
+          className={`relative bg-muted rounded-lg p-3 hover:bg-muted/80 transition-colors ${isHidden ? 'opacity-60 border border-dashed border-muted-foreground/30' : ''}`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <Link 
-                to={`/${comment.user?.username}`}
+                to="/$username"
+                params={{ username: comment.user?.username || "" }}
                 className="font-semibold text-xs hover:underline"
               >
                 {comment.user?.displayName}
@@ -180,7 +202,7 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-background/50">
-                  <MoreVertical className="h-4 w-4" />
+                  <Icon icon={MoreVerticalIcon} className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -191,26 +213,42 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
                       className="flex items-center space-x-2"
                       onClick={() => setIsEditing(true)}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Icon icon={PencilEdit02Icon} className="h-4 w-4" />
                       <span>Edit</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="flex items-center space-x-2 text-red-600"
                       onClick={handleDelete}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Icon icon={Delete03Icon} className="h-4 w-4" />
                       <span>Delete</span>
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  // Show Hide/Report for others
+                  // Show Hide/Unhide/Report for others
                   <>
-                    <DropdownMenuItem className="flex items-center space-x-2">
-                      <EyeOff className="h-4 w-4" />
-                      <span>Hide comment</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center space-x-2">
-                      <Flag className="h-4 w-4" />
+                    {isHidden ? (
+                      <DropdownMenuItem 
+                        className="flex items-center space-x-2"
+                        onClick={handleUnhide}
+                      >
+                        <Icon icon={ViewIcon} className="h-4 w-4" />
+                        <span>Show comment</span>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem 
+                        className="flex items-center space-x-2"
+                        onClick={handleHide}
+                      >
+                        <Icon icon={ViewOffSlashIcon} className="h-4 w-4" />
+                        <span>Hide comment</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem 
+                      className="flex items-center space-x-2"
+                      onClick={() => setShowReportDialog(true)}
+                    >
+                      <Icon icon={Flag03Icon} className="h-4 w-4" />
                       <span>Report comment</span>
                     </DropdownMenuItem>
                   </>
@@ -246,7 +284,7 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
           
           {(commentStats?.likeCount ?? comment.likeCount) > 0 && (
             <div className="flex items-center space-x-1">
-              <Heart className="h-3 w-3 text-red-500 fill-red-500" />
+              <Icon icon={FavouriteIcon} className="h-3 w-3 text-red-500 fill-red-500" />
               <span className="text-xs text-muted-foreground">{commentStats?.likeCount ?? comment.likeCount}</span>
             </div>
           )}
@@ -295,6 +333,13 @@ export function Comment({ comment, postId, level = 0, mainCommentId }: CommentPr
           </div>
         )}
       </div>
+      
+      {/* Report Comment Dialog */}
+      <ReportCommentDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        commentId={comment._id}
+      />
     </div>
   );
 }

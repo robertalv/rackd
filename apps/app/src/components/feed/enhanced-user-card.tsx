@@ -8,14 +8,14 @@ import { Badge } from "@rackd/ui/components/badge";
 import { Input } from "@rackd/ui/components/input";
 import { ProfileAvatar } from "../profile-avatar";
 import { ExpandableSection } from "@/components/layout/expandable-section";
-import { MoreVertical, Trophy, Plus, MapPin, Clock, X, Check, Tags } from "lucide-react";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { formatDistanceToNow } from "date-fns";
-import { useAction, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { toast } from "sonner";
 import { NavigationButton } from "../navigation-button";
 import { useSettingsState } from "@/providers/SettingsProvider";
+import { Add01Icon, Cancel01Icon, ChampionIcon, Clock01Icon, Icon, LabelImportantIcon, Location03Icon, MoreVerticalIcon, Tick01Icon } from "@rackd/ui/icons";
 
 interface Tournament {
   _id: string;
@@ -127,7 +127,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
           <div className="relative h-30 bg-accent/50">
             {/* Menu Button */}
             <Button size="icon" variant="ghost" className="absolute top-3 right-3 transition-colors">
-              <MoreVertical size={20} />
+              <Icon icon={MoreVerticalIcon} size={20} />
             </Button>
           </div>
 
@@ -135,9 +135,13 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
           <div className="px-6 pt-0 relative -top-12">
             {/* Profile Image - Overlapping the cover */}
             <div className="flex justify-center relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent to-accent/50 overflow-hidden border-4 border-gray-700 shadow-2xl">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent to-accent/50 overflow-hidden border shadow-2xl">
                 <ProfileAvatar 
-                  user={user} 
+                  user={{
+                    displayName: user.displayName,
+                    image: user.image,
+                    country: user.country,
+                  }}
                   size="xl" 
                   className="w-full h-full" 
                 />
@@ -200,7 +204,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
         expanded={true}
         icon={
           <NavigationButton
-            icon={Tags}
+            icon={LabelImportantIcon}
             ariaLabel="Interests"
           />
         }
@@ -213,7 +217,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
               onClick={() => setSettingsDialogOpen(true)}
               className="w-full"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Icon icon={Add01Icon} size={20} />
               Add Interest
             </Button>
           )}
@@ -235,7 +239,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                         className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
                         onClick={() => handleRemoveInterest(interest)}
                       >
-                        <X size={8} />
+                        <Icon icon={Cancel01Icon} size={8} />
                       </Button>
                     )}
                   </Badge>
@@ -264,7 +268,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                     disabled={!newInterest.trim()}
                     className="h-8 px-2"
                   >
-                    <Check size={12} />
+                    <Icon icon={Tick01Icon} size={12} />
                   </Button>
                   <Button 
                     size="sm" 
@@ -275,7 +279,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                     }}
                     className="h-8 px-2"
                   >
-                    <X size={12} />
+                    <Icon icon={Cancel01Icon} size={12} />
                   </Button>
                 </div>
               )}
@@ -301,7 +305,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                       disabled={!newInterest.trim()}
                       className="h-8 px-2"
                     >
-                      <Check size={12} />
+                      <Icon icon={Tick01Icon} size={12} />
                     </Button>
                     <Button 
                       size="sm" 
@@ -312,7 +316,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                       }}
                       className="h-8 px-2"
                     >
-                      <X size={12} />
+                      <Icon icon={Cancel01Icon} size={12} />
                     </Button>
                   </div>
                 ) : (
@@ -337,7 +341,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
           expanded={true}
           icon={
             <NavigationButton
-              icon={Trophy}
+              icon={ChampionIcon}
               ariaLabel="Local Tournaments"
             />
           }
@@ -353,7 +357,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                         {tournament.venue && (
                           <>
                             <div className="flex items-center gap-1 mt-1">
-                              <MapPin className="h-3 w-3 text-gray-400" />
+                              <Icon icon={Location03Icon} className="h-3 w-3 text-gray-400" />
                               <span className="text-xs text-gray-400">{tournament.venue.name}</span>
                             </div>
                             {(tournament.venue.city || tournament.venue.state) && (
@@ -376,7 +380,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <Clock className="h-3 w-3" />
+                        <Icon icon={Clock01Icon} className="h-3 w-3" />
                         <span>{formatDistanceToNow(new Date(tournament.startDate), { addSuffix: true })}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -412,7 +416,7 @@ export function EnhancedUserCard({ user, localTournaments = [], isOwnProfile = f
             </>
           ) : (
             <div className="text-center py-4">
-              <Trophy className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <Icon icon={ChampionIcon} className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-2">No local tournaments found</p>
               <Button 
                 variant="outline" 

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
 import { EnhancedMentionInput } from "./enhanced-mention-input";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ProfileAvatar } from "../profile-avatar";
+import { Icon, SentIcon } from "@rackd/ui/icons";
 
 interface CommentInputProps {
   postId: Id<"posts">;
@@ -101,10 +102,12 @@ export function CommentInput({
             autoFocus={!!replyToUser}
           />
           
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">
-              {comment.length}/500
-            </span>
+          <div className="flex items-center justify-end space-x-2">
+            {comment.length > 500 && (
+              <span className="text-xs text-gray-400">
+                {comment.length}/500
+              </span>
+            )}
             
             <div className="flex items-center space-x-2">
               {onCancel && (
@@ -121,10 +124,11 @@ export function CommentInput({
               
               <Button 
                 type="submit" 
-                size="sm"
+                onClick={handleSubmit}
                 disabled={!comment.trim() || isSubmitting || comment.length > 500}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-full disabled:opacity-50"
+                variant="default"
               >
+                <Icon icon={SentIcon} className="h-5 w-5" />
                 {isSubmitting ? "Posting..." : buttonText}
               </Button>
             </div>

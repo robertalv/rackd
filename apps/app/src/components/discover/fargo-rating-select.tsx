@@ -6,6 +6,7 @@ import { Slider } from "@rackd/ui/components/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@rackd/ui/components/popover";
 import { ChevronDownIcon } from "lucide-react";
 import { cn } from "@rackd/ui/lib/utils";
+import { HeaderLabel } from "@rackd/ui/components/label";
 
 interface FargoRatingSelectProps {
   value?: [number, number];
@@ -102,7 +103,7 @@ export function FargoRatingSelect({
         sideOffset={5}
       >
         <div className="space-y-6">
-          <h4 className="font-medium text-center">Fargo Rating</h4>
+          <HeaderLabel size="lg">Fargo Rating</HeaderLabel>
           
           {/* Slider */}
           <div className="px-2">

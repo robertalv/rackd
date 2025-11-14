@@ -48,8 +48,6 @@ export default function SignupPage() {
 
 	const syncUserToCustomTable = useMutation(api.auth.syncUserToCustomTable);
 	const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
-	const syncSessionFromToken = useMutation(api.auth.syncSessionFromToken);
-	const syncEmailPasswordAccount = useMutation(api.auth.syncEmailPasswordAccount);
 
 	const mutedColor = useThemeColor("muted");
 	const foregroundColor = useThemeColor("foreground");
@@ -168,7 +166,6 @@ export default function SignupPage() {
 			}
 
 			const betterAuthUserId = result.data?.user?.id;
-			const sessionToken = result.data?.token;
 
 			// Immediately sync user to custom users table
 			try {
@@ -189,32 +186,6 @@ export default function SignupPage() {
 				// Continue anyway - hook might handle it
 			}
 
-			// Sync account and session immediately if onCreate hook hasn't fired yet
-			if (betterAuthUserId) {
-				// Sync email/password account
-				try {
-					await syncEmailPasswordAccount({
-						betterAuthUserId,
-						email,
-					});
-				} catch (err: any) {
-					console.warn("Failed to sync account (may already exist):", err);
-					// Continue anyway - hook might handle it
-				}
-
-				// Sync session if token is available
-				if (sessionToken) {
-					try {
-						await syncSessionFromToken({
-							token: sessionToken,
-							betterAuthUserId,
-						});
-					} catch (err: any) {
-						console.warn("Failed to sync session (may already exist):", err);
-						// Continue anyway - hook might handle it
-					}
-				}
-			}
 
 			// Create player profile immediately
 			try {

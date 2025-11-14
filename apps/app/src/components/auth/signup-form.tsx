@@ -50,8 +50,6 @@ export function SignupForm() {
   const navigate = useNavigate();
   const syncUserToCustomTable = useMutation(api.auth.syncUserToCustomTable);
   const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
-  const syncSessionFromToken = useMutation(api.auth.syncSessionFromToken);
-  const syncEmailPasswordAccount = useMutation(api.auth.syncEmailPasswordAccount);
 
   const {
     register,
@@ -110,7 +108,6 @@ export function SignupForm() {
       console.log("Signup result:", result);
 
       const betterAuthUserId = result.data?.user?.id;
-      const sessionToken = result.data?.token;
 
       // Immediately sync user to custom users table (don't wait for hook)
       // Pass user data from signup result since session might not be established yet
@@ -136,34 +133,6 @@ export function SignupForm() {
         // Continue anyway - hook might handle it
       }
 
-      // Sync account and session immediately if onCreate hook hasn't fired yet
-      if (betterAuthUserId) {
-        // Sync email/password account
-        try {
-          await syncEmailPasswordAccount({
-            betterAuthUserId,
-            email: data.email,
-          });
-          console.log("Account synced to custom table");
-        } catch (err: any) {
-          console.warn("Failed to sync account (may already exist):", err);
-          // Continue anyway - hook might handle it
-        }
-
-        // Sync session if token is available
-        if (sessionToken) {
-          try {
-            await syncSessionFromToken({
-              token: sessionToken,
-              betterAuthUserId,
-            });
-            console.log("Session synced to custom table");
-          } catch (err: any) {
-            console.warn("Failed to sync session (may already exist):", err);
-            // Continue anyway - hook might handle it
-          }
-        }
-      }
 
       // Create player profile immediately
       try {

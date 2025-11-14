@@ -2,14 +2,14 @@ export function calculateProfileCompletion(user: any): number {
   if (!user) return 0;
   
   // Define profile fields with their weights (importance)
-  // Updated to work with WorkOS user structure
+  // Updated to work with Better Auth user structure
   const profileFields = [
     // Essential fields (higher weight)
-    { field: user.email || user.workos?.email, weight: 15, required: true },
+    { field: user.email, weight: 15, required: true },
     { field: user.displayName, weight: 30, required: true },
     
     // Important fields (medium weight)
-    { field: user.imageUrl || user.coverImage || user.workos?.profilePictureUrl, weight: 10, required: false },
+    { field: user.imageUrl || user.coverImage || user.image, weight: 10, required: false },
     { field: user.country, weight: 10, required: false },
     { field: user.city, weight: 8, required: false },
     
@@ -21,7 +21,7 @@ export function calculateProfileCompletion(user: any): number {
   let totalWeight = 0;
   let completedWeight = 0;
   
-  profileFields.forEach(({ field, weight, required }) => {
+  profileFields.forEach(({ field, weight }) => {
     totalWeight += weight;
     
     // Check if field is completed
@@ -55,11 +55,11 @@ interface MissingField {
 export function getProfileCompletionDetails(user: any) {
   if (!user) return { percentage: 0, missingFields: [], suggestions: [], totalFields: 0, completedFields: 0 };
   
-  // Updated to work with WorkOS user structure
+  // Updated to work with Better Auth user structure
   const profileFields = [
-    { key: 'email', field: user.email || user.workos?.email, weight: 15, required: true, label: 'Email Address' },
+    { key: 'email', field: user.email, weight: 15, required: true, label: 'Email Address' },
     { key: 'displayName', field: user.displayName, weight: 30, required: true, label: 'Display Name' },
-    { key: 'image', field: user.imageUrl || user.coverImage || user.workos?.profilePictureUrl, weight: 10, required: false, label: 'Profile Picture' },
+    { key: 'image', field: user.imageUrl || user.coverImage || user.image, weight: 10, required: false, label: 'Profile Picture' },
     { key: 'country', field: user.country, weight: 10, required: false, label: 'Country' },
     { key: 'city', field: user.city, weight: 8, required: false, label: 'City' },
     { key: 'region', field: user.region, weight: 5, required: false, label: 'State/Region' },

@@ -1,7 +1,8 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { useConvexAuth } from "convex/react";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { useEffect } from "react";
 
 /**
  * Hook that provides user data from both Better Auth and the users table
@@ -10,6 +11,7 @@ import type { Id } from "@rackd/backend/convex/_generated/dataModel";
  */
 export function useCurrentUser() {
   const { isAuthenticated } = useConvexAuth();
+  const ensureUserExists = useMutation(api.auth.ensureUserExists);
 
   // Get both Better Auth user and users table user
   const userData = useQuery(
@@ -19,6 +21,17 @@ export function useCurrentUser() {
 
   const betterAuthUser = userData?.betterAuthUser;
   const usersTableUser = userData?.usersTableUser;
+
+  // If user exists in Better Auth but not in custom table, ensure they exist
+  // This handles OAuth flows where onCreate hook might not fire
+  useEffect(() => {
+    if (isAuthenticated && betterAuthUser && !usersTableUser) {
+      console.log("[useCurrentUser] User exists in Better Auth but not in custom table, ensuring user exists...");
+      ensureUserExists().catch((err) => {
+        console.error("[useCurrentUser] Failed to ensure user exists:", err);
+      });
+    }
+  }, [isAuthenticated, betterAuthUser, usersTableUser, ensureUserExists]);
 
   // Combine data from both Better Auth and users table
   const combinedUser = betterAuthUser

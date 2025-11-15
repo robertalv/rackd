@@ -73,9 +73,9 @@ export function PostComposer({
   if (!currentUser) return null;
 
   return (
-    <Card className="bg-accent/50 mb-6 p-0">
-      <CardContent className="p-4">
-        <div className="flex items-start space-x-3 mb-4">
+    <Card className="bg-accent/50 mb-4 md:mb-6 p-0">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex items-start gap-2 md:gap-3 mb-3 md:mb-4">
           <ProfileAvatar 
             user={{
               displayName: currentUser.displayName || currentUser.email || "User",
@@ -84,13 +84,13 @@ export function PostComposer({
             }}
             size="sm"
           />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <form onSubmit={handleSubmit}>
               <EnhancedMentionInput
                 value={content}
                 onChange={setContent}
                 placeholder={placeholder}
-                className="bg-transparent rounded-2xl border-none resize-none shadow-none text-base placeholder:text-gray-400 focus-visible:ring-0 min-h-[60px]"
+                className="bg-transparent rounded-2xl border-none resize-none shadow-none text-sm md:text-base placeholder:text-gray-400 focus-visible:ring-0 min-h-[60px]"
                 disabled={isPosting || isUploading}
                 maxLength={500}
               />
@@ -100,10 +100,10 @@ export function PostComposer({
         
         {/* Image Preview */}
         {uploadedImages.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 md:mt-3 flex flex-wrap gap-2">
             {uploadedImages.map((storageId, index) => (
               <div key={index} className="relative group">
-                <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                   <PostImage
                     storageId={storageId as Id<"_storage">}
                     alt={`Uploaded image ${index + 1}`}
@@ -115,7 +115,7 @@ export function PostComposer({
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
-                  className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-0.5 shadow-sm transition-opacity opacity-0 group-hover:opacity-100"
+                  className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-0.5 shadow-sm transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100"
                   aria-label="Remove image"
                 >
                   <Icon icon={Cancel01Icon} className="h-3 w-3" />
@@ -125,8 +125,8 @@ export function PostComposer({
           </div>
         )}
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
+        <div className="flex items-center justify-between gap-2 md:gap-3 mt-3 flex-wrap">
+          <div className="flex items-center gap-2 md:gap-4">
             <input
               type="file"
               ref={fileInputRef}
@@ -138,46 +138,45 @@ export function PostComposer({
               type="button" 
               variant="ghost" 
               size="sm" 
-              className="flex items-center px-3 py-2"
+              className="flex items-center px-2 md:px-3 py-2 h-8 md:h-auto"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || isPosting}
             >
-              <Icon icon={Image02Icon} className="h-5 w-5 text-green-400" />
-              <span>{isUploading ? "Uploading..." : "Photo"}</span>
+              <Icon icon={Image02Icon} className="h-4 w-4 md:h-5 md:w-5 text-green-400 flex-shrink-0" />
+              <span className="hidden sm:inline">{isUploading ? "Uploading..." : "Photo"}</span>
             </Button>
-            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-3 py-2">
-              <Icon icon={Video02Icon} className="h-5 w-5 text-blue-400" />
-              <span>Video</span>
+            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-2 md:px-3 py-2 h-8 md:h-auto">
+              <Icon icon={Video02Icon} className="h-4 w-4 md:h-5 md:w-5 text-blue-400 flex-shrink-0" />
+              <span className="hidden sm:inline">Video</span>
             </Button>
-            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-3 py-2">
-              <Icon icon={Chart01Icon} className="h-5 w-5 text-red-400" />
-              <span>Poll</span>
+            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-2 md:px-3 py-2 h-8 md:h-auto">
+              <Icon icon={Chart01Icon} className="h-4 w-4 md:h-5 md:w-5 text-red-400 flex-shrink-0" />
+              <span className="hidden sm:inline">Poll</span>
             </Button>
-            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-3 py-2">
-              <Icon icon={Calendar02Icon} className="h-5 w-5 text-yellow-400" />
-              <span>Schedule</span>
+            <Button disabled type="button" variant="ghost" size="sm" className="flex items-center px-2 md:px-3 py-2 h-8 md:h-auto">
+              <Icon icon={Calendar02Icon} className="h-4 w-4 md:h-5 md:w-5 text-yellow-400 flex-shrink-0" />
+              <span className="hidden sm:inline">Schedule</span>
             </Button>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-            </div>
-            <div className="flex items-center space-x-3">
-              {content.length > 500 && (
-                <span className="text-sm text-gray-400">
-                  {content.length}/500
-                </span>
-              )}
-              <Button 
-                type="submit" 
-                onClick={handleSubmit}
-                disabled={(!content.trim() && uploadedImages.length === 0) || isPosting || isUploading || content.length > 500}
-                variant="default"
-              >
-                <Icon icon={SentIcon} className="h-5 w-5" />
-                {isPosting ? "Posting..." : "Post"}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            {content.length > 500 && (
+              <span className="text-xs md:text-sm text-gray-400">
+                {content.length}/500
+              </span>
+            )}
+            <Button 
+              type="submit" 
+              onClick={handleSubmit}
+              disabled={(!content.trim() && uploadedImages.length === 0) || isPosting || isUploading || content.length > 500}
+              variant="default"
+              size="sm"
+              className="h-8 md:h-auto"
+            >
+              <Icon icon={SentIcon} className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="hidden sm:inline">{isPosting ? "Posting..." : "Post"}</span>
+              <span className="sm:hidden">{isPosting ? "..." : ""}</span>
+            </Button>
           </div>
         </div>
       </CardContent>

@@ -6,5 +6,18 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
-	plugins: [tsconfigPaths(), tailwindcss(), tanstackStart(), netlify(), viteReact()],
+	plugins: [tsconfigPaths(), tanstackStart(), tailwindcss(), viteReact(), netlify()],
+	ssr: {
+		noExternal: ["@hugeicons/react"],
+	},
+	optimizeDeps: {
+		esbuildOptions: {
+			mainFields: ["module", "main"],
+		},
+	},
+	build: {
+		commonjsOptions: {
+			transformMixedEsModules: true,
+		},
+	},
 });

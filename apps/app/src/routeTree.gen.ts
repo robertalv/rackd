@@ -25,7 +25,6 @@ import { Route as AuthenticatedVenuesIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedTournamentsIndexRouteImport } from './routes/_authenticated/tournaments/index'
 import { Route as AuthenticatedPlayersIndexRouteImport } from './routes/_authenticated/players/index'
 import { Route as AuthenticatedFeedIndexRouteImport } from './routes/_authenticated/feed/index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedVenuesNewRouteImport } from './routes/_authenticated/venues/new'
 import { Route as AuthenticatedVenuesIdRouteImport } from './routes/_authenticated/venues/$id'
 import { Route as AuthenticatedTournamentsNewRouteImport } from './routes/_authenticated/tournaments/new'
@@ -118,11 +117,6 @@ const AuthenticatedFeedIndexRoute = AuthenticatedFeedIndexRouteImport.update({
   path: '/feed/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedVenuesNewRoute = AuthenticatedVenuesNewRouteImport.update({
   id: '/venues/new',
   path: '/venues/new',
@@ -151,9 +145,9 @@ const AuthenticatedPlayersIdRoute = AuthenticatedPlayersIdRouteImport.update({
   getParentRoute: () => AuthenticatedPlayersRoute,
 } as any)
 const ApiAuthSplatSplatRoute = ApiAuthSplatSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => ApiAuthSplatRoute,
+  id: '/api/auth/$/$',
+  path: '/api/auth/$/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -172,7 +166,6 @@ export interface FileRoutesByFullPath {
   '/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/venues/$id': typeof AuthenticatedVenuesIdRoute
   '/venues/new': typeof AuthenticatedVenuesNewRoute
-  '/api/auth/$': typeof ApiAuthSplatRouteWithChildren
   '/feed': typeof AuthenticatedFeedIndexRoute
   '/players/': typeof AuthenticatedPlayersIndexRoute
   '/tournaments/': typeof AuthenticatedTournamentsIndexRoute
@@ -193,7 +186,6 @@ export interface FileRoutesByTo {
   '/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/venues/$id': typeof AuthenticatedVenuesIdRoute
   '/venues/new': typeof AuthenticatedVenuesNewRoute
-  '/api/auth/$': typeof ApiAuthSplatRouteWithChildren
   '/feed': typeof AuthenticatedFeedIndexRoute
   '/players': typeof AuthenticatedPlayersIndexRoute
   '/tournaments': typeof AuthenticatedTournamentsIndexRoute
@@ -219,7 +211,6 @@ export interface FileRoutesById {
   '/_authenticated/tournaments/new': typeof AuthenticatedTournamentsNewRoute
   '/_authenticated/venues/$id': typeof AuthenticatedVenuesIdRoute
   '/_authenticated/venues/new': typeof AuthenticatedVenuesNewRoute
-  '/api/auth/$': typeof ApiAuthSplatRouteWithChildren
   '/_authenticated/feed/': typeof AuthenticatedFeedIndexRoute
   '/_authenticated/players/': typeof AuthenticatedPlayersIndexRoute
   '/_authenticated/tournaments/': typeof AuthenticatedTournamentsIndexRoute
@@ -244,7 +235,6 @@ export interface FileRouteTypes {
     | '/tournaments/new'
     | '/venues/$id'
     | '/venues/new'
-    | '/api/auth/$'
     | '/feed'
     | '/players/'
     | '/tournaments/'
@@ -265,7 +255,6 @@ export interface FileRouteTypes {
     | '/tournaments/new'
     | '/venues/$id'
     | '/venues/new'
-    | '/api/auth/$'
     | '/feed'
     | '/players'
     | '/tournaments'
@@ -290,7 +279,6 @@ export interface FileRouteTypes {
     | '/_authenticated/tournaments/new'
     | '/_authenticated/venues/$id'
     | '/_authenticated/venues/new'
-    | '/api/auth/$'
     | '/_authenticated/feed/'
     | '/_authenticated/players/'
     | '/_authenticated/tournaments/'
@@ -301,7 +289,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   UnauthenticatedRoute: typeof UnauthenticatedRouteWithChildren
-  ApiAuthSplatRoute: typeof ApiAuthSplatRouteWithChildren
+  ApiAuthSplatSplatRoute: typeof ApiAuthSplatSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -418,13 +406,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/venues/new': {
       id: '/_authenticated/venues/new'
       path: '/venues/new'
@@ -462,10 +443,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/auth/$/$': {
       id: '/api/auth/$/$'
-      path: '/$'
+      path: '/api/auth/$/$'
       fullPath: '/api/auth/$/$'
       preLoaderRoute: typeof ApiAuthSplatSplatRouteImport
-      parentRoute: typeof ApiAuthSplatRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -549,22 +530,10 @@ const UnauthenticatedRouteWithChildren = UnauthenticatedRoute._addFileChildren(
   UnauthenticatedRouteChildren,
 )
 
-interface ApiAuthSplatRouteChildren {
-  ApiAuthSplatSplatRoute: typeof ApiAuthSplatSplatRoute
-}
-
-const ApiAuthSplatRouteChildren: ApiAuthSplatRouteChildren = {
-  ApiAuthSplatSplatRoute: ApiAuthSplatSplatRoute,
-}
-
-const ApiAuthSplatRouteWithChildren = ApiAuthSplatRoute._addFileChildren(
-  ApiAuthSplatRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   UnauthenticatedRoute: UnauthenticatedRouteWithChildren,
-  ApiAuthSplatRoute: ApiAuthSplatRouteWithChildren,
+  ApiAuthSplatSplatRoute: ApiAuthSplatSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

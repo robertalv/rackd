@@ -1,0 +1,7 @@
+[build]
+  command = "cd ../../packages/backend && npx convex deploy --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  publish = "dist/client"
+
+[build.environment]
+  NODE_VERSION = "20"
+

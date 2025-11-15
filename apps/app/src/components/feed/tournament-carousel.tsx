@@ -39,15 +39,15 @@ export function TournamentCarousel() {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
-        <HeaderLabel size="lg">Upcoming Tournaments</HeaderLabel>
-        <Button variant="outline" size="sm" asChild>
+      <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+        <HeaderLabel size="lg" className="text-base md:text-lg">Upcoming Tournaments</HeaderLabel>
+        <Button variant="outline" size="sm" asChild className="h-8 md:h-auto text-xs md:text-sm">
           <Link to="/tournaments">View All</Link>
         </Button>
       </div>
       <div className="relative">
         <Card className="overflow-hidden bg-card p-0">
-          <div className="relative h-80 bg-muted">
+          <div className="relative h-64 sm:h-72 md:h-80 bg-muted">
             {current.flyerUrl ? (
               <div className="w-full h-full relative">
                 <img
@@ -60,46 +60,46 @@ export function TournamentCarousel() {
               </div>
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center relative">
-                <Icon icon={ChampionIcon} className="h-16 w-16 text-primary/30" />
+                <Icon icon={ChampionIcon} className="h-12 w-12 md:h-16 md:w-16 text-primary/30" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
               </div>
             )}
             
             {/* Content */}
-            <div className="absolute inset-0 flex flex-col justify-end p-6 text-white bg-gradient-to-t from-black/80 via-black/30 to-transparent">
-              <HeaderLabel size="4xl">{current.name}</HeaderLabel>
-              <div className="flex items-end justify-between gap-4 mt-2">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-2">
+            <div className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4 md:p-6 text-white bg-gradient-to-t from-black/80 via-black/30 to-transparent">
+              <HeaderLabel size="xl" className="text-lg sm:text-2xl md:text-4xl line-clamp-2">{current.name}</HeaderLabel>
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mt-2">
+                <div className="flex flex-col gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-1.5 sm:gap-2">
                     <div className="flex items-center gap-2">
-                      <Icon icon={Calendar02Icon} className="w-4 h-4" />
-                      <span className="text-sm truncate">{formatDate(current.date)}</span>
+                      <Icon icon={Calendar02Icon} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm truncate">{formatDate(current.date)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Icon icon={ChampionIcon} className="w-4 h-4" />
-                      <span className="text-sm font-semibold">
+                      <Icon icon={ChampionIcon} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm font-semibold">
                         {formatPrizePool(current.entryFee, current.maxPlayers)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Icon icon={UserGroupIcon} className="w-4 h-4" />
-                      <span className="text-sm">{current.registeredCount} / {current.maxPlayers || "∞"} players</span>
+                      <Icon icon={UserGroupIcon} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm">{current.registeredCount} / {current.maxPlayers || "∞"} players</span>
                     </div>
                   </div>
                   {current.venue && current.venueId && (
                     <Link 
                       to="/venues/$id" 
                       params={{ id: current.venueId }}
-                      className="flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors !cursor-pointer"
+                      className="flex items-center gap-2 text-xs sm:text-sm text-white/80 hover:text-white transition-colors !cursor-pointer"
                     >
-                      <Icon icon={StoreLocation02Icon} className="w-4 h-4" />
-                      {current.venue.name}
+                      <Icon icon={StoreLocation02Icon} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate">{current.venue.name}</span>
                     </Link>
                   )}
                 </div>
                 <Button 
                   size="sm" 
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0 w-full sm:w-auto text-xs sm:text-sm h-9 md:h-auto"
                   asChild
                 >
                   <Link to="/tournaments/$id" params={{ id: current._id }}>Register</Link>
@@ -114,29 +114,32 @@ export function TournamentCarousel() {
           <>
             <Button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary text-primary-foreground rounded-lg p-2 w-10 h-10"
+              className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 bg-primary/80 hover:bg-primary text-primary-foreground rounded-lg p-2 w-10 h-10 sm:w-10 sm:h-10 md:w-12 md:h-12 touch-manipulation z-10"
               size="icon"
               variant="ghost"
+              aria-label="Previous tournament"
             >
-              <Icon icon={ArrowLeft01Icon} className="w-6 h-6" />
+              <Icon icon={ArrowLeft01Icon} className="w-5 h-5 sm:w-6 sm:h-6" />
             </Button>
             <Button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary text-primary-foreground rounded-lg p-2 w-10 h-10"
+              className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 bg-primary/80 hover:bg-primary text-primary-foreground rounded-lg p-2 w-10 h-10 sm:w-10 sm:h-10 md:w-12 md:h-12 touch-manipulation z-10"
               size="icon"
               variant="ghost"
+              aria-label="Next tournament"
             >
-              <Icon icon={ArrowRight01Icon} className="w-6 h-6" />
+              <Icon icon={ArrowRight01Icon} className="w-5 h-5 sm:w-6 sm:h-6" />
             </Button>
             {/* Indicators */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2 z-10">
               {sortedTournaments.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentIndex ? 'bg-white w-8' : 'bg-white/50'
+                  className={`h-2 sm:h-2 rounded-full transition-all touch-manipulation ${
+                    index === currentIndex ? 'bg-white w-6 sm:w-8' : 'bg-white/50 w-2'
                   }`}
+                  aria-label={`Go to tournament ${index + 1}`}
                 />
               ))}
             </div>

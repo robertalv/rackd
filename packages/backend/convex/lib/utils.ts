@@ -20,6 +20,12 @@ export const site = {
 
 export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
 	try {
+		// Safety check: ensure ctx has the expected structure
+		if (!ctx || !ctx.db) {
+			console.warn("[getCurrentUser] Invalid context provided");
+			return null;
+		}
+		
 		const user = await authClient.getAuthUser(ctx);
 		if (!user) return null;
 		

@@ -45,8 +45,9 @@ export function SignupForm() {
   const syncUserToCustomTable = useMutation(api.auth.syncUserToCustomTable);
   const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
   
-  // Turnstile bot protection
-  const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  // Only use Turnstile in production
+  const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD;
+  const turnstileSiteKey = isProduction ? import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY : undefined;
   const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile, isLoading: turnstileLoading } = useTurnstile({
     siteKey: turnstileSiteKey || "",
     theme: "auto",
@@ -100,8 +101,8 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      // Verify Turnstile token if site key is configured
-      if (turnstileSiteKey) {
+      // Verify Turnstile token if in production and site key is configured
+      if (isProduction && turnstileSiteKey) {
         if (!turnstileToken) {
           setError("root", {
             message: "Please complete the security verification.",
@@ -183,8 +184,8 @@ export function SignupForm() {
         description: "You have successfully signed up.",
       });
 
-      // Reset Turnstile after successful signup
-      if (turnstileSiteKey) {
+      // Reset Turnstile after successful signup (if used)
+      if (isProduction && turnstileSiteKey) {
         resetTurnstile();
       }
 
@@ -461,8 +462,8 @@ export function SignupForm() {
               )}
             </div>
 
-            {/* Turnstile widget - floating bottom right */}
-            {turnstileSiteKey && (
+            {/* Turnstile widget - floating bottom right (production only) */}
+            {isProduction && turnstileSiteKey && (
               <div className="fixed bottom-4 right-4 z-50">
                 <div ref={turnstileContainerRef} />
               </div>
@@ -472,7 +473,7 @@ export function SignupForm() {
               type="submit"
               size="lg"
               variant="auth"
-              disabled={isLoading || (turnstileSiteKey && (!turnstileToken || turnstileLoading))}
+              disabled={isLoading || (isProduction && turnstileSiteKey && (!turnstileToken || turnstileLoading))}
               className="w-full"
             >
               <Icon icon={Mail01Icon} className="h-4 w-4" />

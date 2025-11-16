@@ -47,16 +47,46 @@ export interface RouterAppContext {
 	token?: string;
 }
 
-const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'development';
-
 // CSP policy - more lenient in development for Vite HMR, stricter in production
 const getCSPPolicy = () => {
+	// Vite requires direct property access (no optional chaining or dynamic access)
+	// Access directly like in sentry.client.ts - Vite handles this at build time
+	const isDevelopment = import.meta.env.MODE === 'development';
+	
+	// Sentry requires multiple subdomain levels - CSP wildcards only match one level
+	// Must explicitly list the full URL for multi-level subdomains
+	const sentryConnectSrc = "https://sentry.io https://*.sentry.io https://o4510354603835392.ingest.us.sentry.io";
+	
 	if (isDevelopment) {
 		// Development CSP: Allow Vite HMR and more permissive settings
-		return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob: http:; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://*.sentry.io https://o4510354603835392.ingest.us.sentry.io; frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';";
+		return [
+			"default-src 'self'",
+			"script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net https://sentry.io https://*.sentry.io blob:",
+			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+			"font-src 'self' https://fonts.gstatic.com data:",
+			"img-src 'self' data: https: blob: http:",
+			`connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://dashboard.fargorate.com ${sentryConnectSrc}`,
+			"frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com",
+			"worker-src 'self' blob: data:",
+			"object-src 'none'",
+			"base-uri 'self'",
+			"form-action 'self'"
+		].join("; ");
 	}
 	// Production CSP: Stricter policy
-	return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://*.sentry.io https://o4510354603835392.ingest.us.sentry.io; frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';";
+	return [
+		"default-src 'self'",
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net https://sentry.io https://*.sentry.io blob:",
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"font-src 'self' https://fonts.gstatic.com data:",
+		"img-src 'self' data: https: blob:",
+		`connect-src 'self' wss: https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://dashboard.fargorate.com ${sentryConnectSrc}`,
+		"frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com",
+		"worker-src 'self' blob: data:",
+		"object-src 'none'",
+		"base-uri 'self'",
+		"form-action 'self'"
+	].join("; ");
 };
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({

@@ -27,15 +27,15 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
-  // Turnstile bot protection
-  const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  // Only use Turnstile in production
+  const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD;
+  const turnstileSiteKey = isProduction ? import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY : undefined;
   const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile, isLoading: turnstileLoading } = useTurnstile({
     siteKey: turnstileSiteKey || "",
     theme: "auto",
     size: "normal",
     onError: (error) => {
       console.error("Turnstile error:", error);
-      // Error 110200 typically means invalid site key or hostname mismatch
       if (error.includes("110200")) {
         console.error("Turnstile error 110200: Check that your site key matches Cloudflare and the current hostname is configured");
       }
@@ -55,8 +55,8 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Verify Turnstile token if site key is configured
-      if (turnstileSiteKey) {
+      // Verify Turnstile token if in production and site key is configured
+      if (isProduction && turnstileSiteKey) {
         if (!turnstileToken) {
           setError("root", {
             message: "Please complete the security verification.",
@@ -102,8 +102,8 @@ export function LoginForm() {
         description: "You have successfully signed in.",
       });
 
-      // Reset Turnstile after successful login
-      if (turnstileSiteKey) {
+      // Reset Turnstile after successful login (if used)
+      if (isProduction && turnstileSiteKey) {
         resetTurnstile();
       }
 
@@ -245,8 +245,8 @@ export function LoginForm() {
               )}
             </div>
 
-            {/* Turnstile widget - floating bottom right */}
-            {turnstileSiteKey && (
+            {/* Turnstile widget - floating bottom right (production only) */}
+            {isProduction && turnstileSiteKey && (
               <div className="fixed bottom-4 right-4 z-50">
                 <div ref={turnstileContainerRef} />
               </div>
@@ -256,7 +256,7 @@ export function LoginForm() {
               type="submit"
               size="lg"
               variant="auth"
-              disabled={isLoading || (turnstileSiteKey && (!turnstileToken || turnstileLoading))}
+              disabled={isLoading || (isProduction && turnstileSiteKey && (!turnstileToken || turnstileLoading))}
               className="w-full"
             >
               <Icon icon={Mail01Icon} className="h-4 w-4" />

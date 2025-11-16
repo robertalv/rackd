@@ -137,6 +137,8 @@ const SingleEliminationBracket = ({
                           numOfRounds={columns.length}
                           tournamentRoundText={match.tournamentRoundText ?? ''}
                           columnIndex={columnIndex}
+                          rowIndex={rowIndex}
+                          gameWidth={gameWidth}
                         />
                       )}
                       {columnIndex !== 0 && (

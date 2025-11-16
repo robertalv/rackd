@@ -23,6 +23,7 @@ import { ProfileSettings } from "@/components/settings/profile-settings";
 import { SessionsManager } from "@/components/settings/sessions-manager";
 import { InterestTagsManager } from "@/components/settings/interest-tags-manager";
 import { ConnectedAccounts } from "@/components/settings/connected-accounts";
+import { BillingManager } from "@/components/billing/billing-manager";
 import { useSettingsState } from "@/providers/SettingsProvider";
 import { cn } from "@rackd/ui/lib/utils";
 import { useLocation } from "@tanstack/react-router";
@@ -91,7 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           >
             <div className="h-14 flex items-center justify-center border-b shrink-0">
-              <Link to="/" className="flex items-center justify-center">
+              <Link to="/" search={{ postId: undefined }} className="flex items-center justify-center">
                 <img 
                   src="/logo.png" 
                   alt="Rackd logo" 
@@ -114,10 +115,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   tooltipPosition="right"
                 />
               ))}
+              
             </nav>
           </aside>
 
-          <div className="flex flex-col flex-1 overflow-hidden md:ml-0">
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden md:ml-0">
             <header className="sticky top-0 z-10 border-b h-14 flex items-center px-4 shrink-0 bg-background">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
@@ -212,7 +214,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </header>
 
-            <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden">
+            <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-h-0">
               {children}
             </main>
           </div>
@@ -234,6 +236,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           sessionsManager={<SessionsManager />}
           interestsManager={<InterestTagsManager interests={currentUser?.interests || []} maxTags={15} placeholder="e.g., 8-ball, 9-ball, tournaments..." />}
           connectedAccounts={<ConnectedAccounts />}
+          billingManager={<BillingManager />}
           initialTab={initialTab}
         />
       )}

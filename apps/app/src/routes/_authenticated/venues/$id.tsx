@@ -16,6 +16,7 @@ import { Icon, ChampionIcon, StoreLocation01Icon, InformationCircleIcon, Add01Ic
 import { HeaderLabel } from "@rackd/ui/components/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@rackd/ui/components/tabs";
 import { PageHeader } from "@/components/layout/page-header";
+import { CountryFlag } from "@/components/country-flag";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,27 @@ function VenueDetailPage() {
   const tournaments = useQuery(api.venues.getTournamentsByVenue, { venueId: id as Id<"venues"> });
   const tables = useQuery(api.venues.getTablesByVenue, { venueId: id as Id<"venues"> });
   const deleteVenue = useMutation(api.venues.remove);
+
+  // Get active tournaments to fetch matches
+  const activeTournaments = useMemo(() => {
+    return tournaments?.filter((t: any) => t.status === "active") || [];
+  }, [tournaments]);
+
+  // Fetch matches for the first active tournament (for now)
+  // TODO: In the future, create a backend function to get all matches for multiple tournaments at once
+  const firstActiveTournamentId = activeTournaments.length > 0 ? activeTournaments[0]._id : undefined;
+  const allMatches = useQuery(
+    api.matches.getByTournament,
+    firstActiveTournamentId ? { tournamentId: firstActiveTournamentId } : "skip"
+  );
+
+  // For now, we'll use matches from the first active tournament
+  // In a real scenario, you might want to create a backend function to get all matches for multiple tournaments
+  const matchesForAllActiveTournaments = useMemo(() => {
+    if (!allMatches || activeTournaments.length === 0) return [];
+    // For now, we'll use matches from the first active tournament
+    return allMatches;
+  }, [allMatches, activeTournaments]);
 
   const canEdit = venue && currentUser && venue.organizerId === currentUser._id;
 
@@ -90,6 +112,11 @@ function VenueDetailPage() {
     
     return grouped;
   }, [tables]);
+
+  // Get matches for a specific table number
+  const getMatchesForTable = (tableNumber: number) => {
+    return matchesForAllActiveTournaments.filter((m: any) => m.tableNumber === tableNumber && m.status === "in_progress") || [];
+  };
 
   if (!venue) {
     return (
@@ -218,7 +245,7 @@ function VenueDetailPage() {
               </div>
             )}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1 h-auto rounded-lg border border-border/50 shadow-sm">
+              <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50 p-1 h-auto rounded-lg border border-border/50 shadow-sm">
                 <TabsTrigger 
                   value="overview"
                   className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200"
@@ -235,6 +262,18 @@ function VenueDetailPage() {
                   {totalTournaments > 0 && (
                     <Badge variant="secondary" className="ml-2 text-xs">
                       {totalTournaments}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="tables"
+                  className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-md transition-all duration-200"
+                >
+                  <Icon icon={StoreLocation01Icon} className="h-4 w-4 mr-2" />
+                  <HeaderLabel size="sm">Tables</HeaderLabel>
+                  {totalTables > 0 && (
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {totalTables}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -492,6 +531,145 @@ function VenueDetailPage() {
                       </div>
                     </CardContent>
                   </Card>
+                )}
+              </TabsContent>
+
+              {/* Tables Tab */}
+              <TabsContent value="tables" className="space-y-6">
+                {tables === undefined ? (
+                  <Card>
+                    <CardContent className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">Loading tables...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : totalTables === 0 ? (
+                  <Card>
+                    <CardContent className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <Icon icon={StoreLocation01Icon} className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No tables found</h3>
+                        <p className="text-muted-foreground">
+                          This venue doesn't have any tables registered yet.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {tables.map((table: any) => {
+                      const tableNum = table.tableNumber || table.startNumber;
+                      const tableMatches = getMatchesForTable(tableNum);
+                      const isInUse = table.status === "IN_USE" || tableMatches.length > 0;
+                      const isClosed = table.status === "CLOSED";
+                      const currentMatch = tableMatches[0];
+
+                      return (
+                        <Card key={table._id} className="relative">
+                          <CardContent className="p-4">
+                            {/* Table Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-lg font-semibold">{table.label || `Table ${tableNum}`}</span>
+                              <div className="flex items-center gap-2">
+                                {isInUse ? (
+                                  <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded font-medium">
+                                    IN_USE
+                                  </span>
+                                ) : isClosed ? (
+                                  <span className="px-2 py-1 text-xs bg-gray-500/20 text-gray-400 rounded font-medium">
+                                    CLOSED
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded font-medium">
+                                    OPEN
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Table Info */}
+                            <div className="text-xs text-muted-foreground mb-3">
+                              <div>{table.manufacturer}</div>
+                              <div>{table.size}</div>
+                            </div>
+
+                            {/* Pool Table Visualization */}
+                            <div className={`aspect-video rounded-lg flex items-center justify-center mb-3 relative overflow-hidden ${
+                              isClosed ? "bg-gray-900/30" : "bg-blue-900/30"
+                            }`}>
+                              {/* Pool Table SVG */}
+                              <div className="w-full h-full relative">
+                                <img 
+                                  src="/pool-table.svg" 
+                                  alt="Pool Table" 
+                                  className={`w-full h-full object-contain ${isClosed ? "opacity-50 grayscale" : ""}`}
+                                />
+                                {/* Content Overlay */}
+                                {isInUse && currentMatch ? (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                                    <div className="w-full space-y-3">
+                                      {/* Player 1 */}
+                                      <div className="flex items-center justify-between px-4">
+                                        <div className="flex items-center gap-2">
+                                          <CountryFlag countryCode={(currentMatch.player1 as any)?.country || "USA"} size="sm" />
+                                          <HeaderLabel size="lg" className="text-white">{currentMatch.player1?.name || "TBD"}</HeaderLabel>
+                                        </div>
+                                        <Badge className="bg-blue-950/20 text-md font-bold">
+                                          {currentMatch.player1Score || 0}
+                                        </Badge>
+                                      </div>
+                                      {/* Player 2 */}
+                                      <div className="flex items-center justify-between px-4">
+                                        <div className="flex items-center gap-2">
+                                          <CountryFlag countryCode={(currentMatch.player2 as any)?.country || "USA"} size="sm" />
+                                          <HeaderLabel size="lg" className="text-white">{currentMatch.player2?.name || "TBD"}</HeaderLabel>
+                                        </div>
+                                        <Badge className="bg-blue-950/20 text-md font-bold">
+                                          {currentMatch.player2Score || 0}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : isClosed ? (
+                                  <span className="absolute inset-0 flex items-center justify-center text-white font-medium text-lg">
+                                    CLOSED
+                                  </span>
+                                ) : isInUse ? (
+                                  <span className="absolute inset-0 flex items-center justify-center text-white font-medium text-lg">
+                                    IN USE
+                                  </span>
+                                ) : (
+                                  <span className="absolute inset-0 flex items-center justify-center text-white font-medium text-lg">
+                                    OPEN
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Match Info */}
+                            {isInUse && currentMatch && (
+                              <div className="space-y-2 mt-3">
+                                <div className="text-xs text-muted-foreground">
+                                  Match {currentMatch.round || 1}{" "}
+                                  {currentMatch.bracketType === "winner" 
+                                    ? `(W${currentMatch.round || 1}-${currentMatch.bracketPosition || 1})`
+                                    : currentMatch.bracketType === "loser"
+                                    ? `(L${currentMatch.round || 1}-${currentMatch.bracketPosition || 1})`
+                                    : `(${currentMatch.round || 1}-${currentMatch.bracketPosition || 1})`}
+                                </div>
+                                {activeTournaments.length > 0 && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {activeTournaments.find((t: any) => t._id === currentMatch.tournamentId)?.name || "Tournament"}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 )}
               </TabsContent>
 

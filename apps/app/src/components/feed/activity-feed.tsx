@@ -16,12 +16,14 @@ interface ActivityFeedProps {
   userId?: Id<"users">;
   showComposer?: boolean;
   feedType?: "user" | "global" | "following";
+  highlightPostId?: Id<"posts">;
 }
 
 export function ActivityFeed({ 
   userId, 
   showComposer = false, 
-  feedType = "following" 
+  feedType = "following",
+  highlightPostId
 }: ActivityFeedProps) {
   const { refreshKey } = useFeedRefresh();
   const [queryKey, setQueryKey] = useState(0);
@@ -100,7 +102,11 @@ export function ActivityFeed({
                   </div>
                   <div className="space-y-4">
                     {posts.filter(post => post.isPinned).map((post) => (
-                      <PostCard key={post._id} post={post} />
+                      <PostCard 
+                        key={post._id} 
+                        post={post} 
+                        highlight={post._id === highlightPostId}
+                      />
                     ))}
                   </div>
                 </div>
@@ -117,7 +123,11 @@ export function ActivityFeed({
               )}
               <div className="space-y-4">
                 {regularPosts.map((post) => (
-                  <PostCard key={post._id} post={post} />
+                  <PostCard 
+                    key={post._id} 
+                    post={post} 
+                    highlight={post._id === highlightPostId}
+                  />
                 ))}
               </div>
             </div>

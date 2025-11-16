@@ -4,6 +4,7 @@ import { getCurrentUserIdOrThrow } from "./lib/utils";
 import { CounterHelpers } from "./counters";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { autumn } from "./autumn";
 
 // Get all tournaments
 export const getAllTournaments = query({
@@ -205,6 +206,25 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Check tournament limit for free users (max 3 tournaments)
+    const unlimitedCheck = await autumn.check(ctx, {
+      featureId: "unlimited_tournaments",
+    });
+
+    if (!unlimitedCheck.data?.allowed) {
+      // User is on free plan, check tournament count
+      const existingTournaments = await ctx.db
+        .query("tournaments")
+        .withIndex("by_organizer", (q) => q.eq("organizerId", userId))
+        .collect();
+
+      if (existingTournaments.length >= 3) {
+        throw new Error(
+          "Free plan allows up to 3 tournaments. Please upgrade to create unlimited tournaments."
+        );
+      }
+    }
 
     // Verify Turnstile token if provided
     if (args.turnstileToken) {

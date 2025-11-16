@@ -99,4 +99,47 @@ export async function mapUrl(url: string, options?: {
 	});
 }
 
+/**
+ * Extract structured data from a URL using AI (Firecrawl Extract API)
+ * Perfect for extracting tournament, venue, or player information
+ */
+export async function extractData(url: string, schema: Record<string, any>) {
+	const firecrawl = getFirecrawlClient();
+	return await firecrawl.extract(url, {
+		schema,
+	});
+}
+
+/**
+ * Search the web and get full content from results (Firecrawl Search API)
+ * Useful for finding tournaments, venues, or player profiles
+ */
+export async function searchWeb(query: string, options?: {
+	numResults?: number;
+	scrapeOptions?: {
+		formats?: ('markdown' | 'html')[];
+	};
+}) {
+	const firecrawl = getFirecrawlClient();
+	return await firecrawl.search(query, {
+		numResults: options?.numResults || 5,
+		scrapeOptions: options?.scrapeOptions,
+	});
+}
+
+/**
+ * Scrape URL with screenshot capability
+ * Useful for tournament flyers and venue images
+ */
+export async function scrapeUrlWithScreenshot(url: string, options?: {
+	formats?: ('markdown' | 'html')[];
+	screenshot?: boolean;
+}) {
+	const firecrawl = getFirecrawlClient();
+	return await firecrawl.scrape(url, {
+		formats: options?.formats || ['markdown', 'html'],
+		screenshot: options?.screenshot || false,
+	});
+}
+
 

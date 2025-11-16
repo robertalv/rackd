@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -12,78 +12,14 @@ import {
 import { Button } from "@rackd/ui/components/button";
 import { Badge } from "@rackd/ui/components/badge";
 import { Card, CardContent } from "@rackd/ui/components/card";
-import { Avatar, AvatarFallback } from "@rackd/ui/components/avatar";
 import { getCountryName } from "@/lib/fargorate-api";
-import { hasFlag } from 'country-flag-icons';
+import { CountryFlag } from "../country-flag";
 import type { FargoRatePlayer } from "@rackd/types";
 import { Icon, ChampionIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@rackd/ui/icons";
 
 interface FargoWorldRankingsTableProps {
   players: FargoRatePlayer[];
   searchQuery?: string;
-}
-
-// Country flag component in circular avatar
-function CountryFlag({ countryCode }: { countryCode: string }) {
-  const [FlagComponent, setFlagComponent] = useState<React.ComponentType<any> | null>(null);
-
-  useEffect(() => {
-    // Convert 3-letter codes to 2-letter codes for flag lookup
-    const countryCodeMap: Record<string, string> = {
-      'USA': 'US', 'DEU': 'DE', 'IRQ': 'IQ', 'TWN': 'TW', 'ESP': 'ES',
-      'PHL': 'PH', 'SGP': 'SG', 'SCT': 'GB', 'ALB': 'AL', 'AUT': 'AT',
-      'POL': 'PL', 'GRC': 'GR', 'JPN': 'JP', 'CHN': 'CN', 'NLD': 'NL',
-      'CAN': 'CA', 'HKG': 'HK', 'HUN': 'HU', 'VNM': 'VN', 'BIH': 'BA',
-      'FIN': 'FI', 'GBR': 'GB', 'RUS': 'RU', 'UKR': 'UA', 'DNK': 'DK',
-      'SYR': 'SY', 'PER': 'PE', 'IDN': 'ID', 'CYP': 'CY', 'ITA': 'IT',
-      'FRA': 'FR', 'BEL': 'BE', 'SWE': 'SE', 'NOR': 'NO', 'CZE': 'CZ',
-      'SVK': 'SK', 'SVN': 'SI', 'HRV': 'HR', 'SRB': 'RS', 'MNE': 'ME',
-      'MKD': 'MK', 'BGR': 'BG', 'ROU': 'RO', 'LTU': 'LT', 'LVA': 'LV',
-      'EST': 'EE', 'BLR': 'BY', 'MDA': 'MD', 'GEO': 'GE', 'ARM': 'AM',
-      'AZE': 'AZ', 'KAZ': 'KZ', 'UZB': 'UZ', 'TKM': 'TM', 'KGZ': 'KG',
-      'TJK': 'TJ', 'MNG': 'MN', 'KOR': 'KR', 'PRK': 'KP', 'THA': 'TH',
-      'MYS': 'MY', 'BRN': 'BN', 'LAO': 'LA', 'KHM': 'KH', 'MMR': 'MM',
-    };
-    const twoLetterCode = countryCodeMap[countryCode] || countryCode;
-    
-    if (hasFlag(twoLetterCode.toUpperCase())) {
-      import('country-flag-icons/react/3x2')
-        .then((flags) => {
-          const FlagComp = flags[twoLetterCode.toUpperCase() as keyof typeof flags];
-          if (FlagComp) {
-            setFlagComponent(() => FlagComp);
-          }
-        })
-        .catch(() => {
-          setFlagComponent(null);
-        });
-    }
-  }, [countryCode]);
-
-  const renderFallback = () => {
-    if (FlagComponent) {
-      return (
-        <div className="w-full h-full overflow-hidden rounded-full">
-          <FlagComponent className="w-full h-full object-cover scale-150" />
-        </div>
-      );
-    }
-
-    // Fallback to muted circle
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-muted rounded-full">
-        <span className="text-xs text-muted-foreground">{countryCode.slice(0, 2)}</span>
-      </div>
-    );
-  };
-
-  return (
-    <Avatar className="w-6 h-6">
-      <AvatarFallback className="border-0 p-0">
-        {renderFallback()}
-      </AvatarFallback>
-    </Avatar>
-  );
 }
 
 export function FargoWorldRankingsTable({ players, searchQuery = "" }: FargoWorldRankingsTableProps) {

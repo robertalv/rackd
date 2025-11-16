@@ -75,27 +75,14 @@ export const getByUserId = query({
     limit: v.optional(v.number())
   },
   handler: async (ctx, { userId, limit }) => {
-    console.log("[getByUserId] Starting query for userId:", userId);
-    
-    // Get user to check for direct playerId
+
     const user = await ctx.db.get(userId);
-    console.log("[getByUserId] User:", user ? { _id: user._id, playerId: user.playerId } : "null");
     
     // Get all player IDs associated with this user
     const registrations = await ctx.db
       .query("tournamentRegistrations")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    
-    console.log("[getByUserId] Found registrations:", registrations.length);
-    registrations.forEach((r, i) => {
-      console.log(`[getByUserId] Registration ${i}:`, { 
-        _id: r._id, 
-        tournamentId: r.tournamentId, 
-        playerId: r.playerId,
-        userId: r.userId 
-      });
-    });
     
     const playerIds = new Set<Id<"players">>();
     
@@ -104,21 +91,13 @@ export const getByUserId = query({
     // not matches between other players they may have registered
     if (user && "playerId" in user && user.playerId) {
       playerIds.add(user.playerId);
-      console.log("[getByUserId] Added user.playerId (ONLY using this):", user.playerId);
-    } else {
-      console.log("[getByUserId] WARNING: User has no playerId, cannot find matches");
     }
     
     // NOTE: We're NOT adding player IDs from registrations because:
     // - A user may register multiple players for a tournament (e.g., registering teammates)
     // - We only want to show matches where the USER THEMSELVES is playing
     // - The user's actual player is stored in user.playerId
-    console.log("[getByUserId] Skipping registration playerIds - only using user.playerId");
-
-    console.log("[getByUserId] Total unique playerIds:", Array.from(playerIds));
-
     if (playerIds.size === 0) {
-      console.log("[getByUserId] No player IDs found, returning empty array");
       return [];
     }
 
@@ -126,24 +105,11 @@ export const getByUserId = query({
     const allMatches: any[] = [];
     
     for (const playerId of playerIds) {
-      console.log(`[getByUserId] Querying matches for playerId: ${playerId}`);
-      
       // Get matches where player is player1
       const player1Matches = await ctx.db
         .query("matches")
         .withIndex("by_player1", (q) => q.eq("player1Id", playerId))
         .collect();
-      
-      console.log(`[getByUserId] Found ${player1Matches.length} matches where playerId ${playerId} is player1`);
-      player1Matches.forEach((m, i) => {
-        console.log(`[getByUserId]   Match ${i}:`, { 
-          _id: m._id, 
-          tournamentId: m.tournamentId, 
-          player1Id: m.player1Id, 
-          player2Id: m.player2Id,
-          status: m.status 
-        });
-      });
       
       // Get matches where player is player2
       const player2Matches = await ctx.db
@@ -151,62 +117,34 @@ export const getByUserId = query({
         .withIndex("by_player2", (q) => q.eq("player2Id", playerId))
         .collect();
       
-      console.log(`[getByUserId] Found ${player2Matches.length} matches where playerId ${playerId} is player2`);
-      player2Matches.forEach((m, i) => {
-        console.log(`[getByUserId]   Match ${i}:`, { 
-          _id: m._id, 
-          tournamentId: m.tournamentId, 
-          player1Id: m.player1Id, 
-          player2Id: m.player2Id,
-          status: m.status 
-        });
-      });
-      
       allMatches.push(...player1Matches, ...player2Matches);
     }
     
-    console.log(`[getByUserId] Total matches found before deduplication: ${allMatches.length}`);
-
     // Remove duplicates and STRICTLY filter to ensure user's player is actually in the match
     const deduplicatedMatches = Array.from(
       new Map(allMatches.map(m => [m._id, m])).values()
     );
     
-    console.log(`[getByUserId] Unique matches after deduplication: ${deduplicatedMatches.length}`);
-    
     const filteredMatches = deduplicatedMatches.filter(match => {
       // CRITICAL: Match must have user's player ID as either player1Id OR player2Id
       // This is the primary filter - if this fails, the match is excluded
       if (!match.player1Id && !match.player2Id) {
-        console.log(`[getByUserId] Filtering out match ${match._id}: No players in match`);
         return false; // No players in match, skip
       }
       
       const hasUserPlayer1 = match.player1Id ? playerIds.has(match.player1Id) : false;
       const hasUserPlayer2 = match.player2Id ? playerIds.has(match.player2Id) : false;
       
-      console.log(`[getByUserId] Match ${match._id}:`, {
-        player1Id: match.player1Id,
-        player2Id: match.player2Id,
-        hasUserPlayer1,
-        hasUserPlayer2,
-        status: match.status,
-        tournamentId: match.tournamentId
-      });
-      
       // Match must have at least one of the user's player IDs
       if (!hasUserPlayer1 && !hasUserPlayer2) {
-        console.log(`[getByUserId] Filtering out match ${match._id}: User's player is not in this match`);
         return false; // User's player is not in this match, exclude it
       }
       
       // Only return completed matches
       if (match.status !== "completed") {
-        console.log(`[getByUserId] Filtering out match ${match._id}: Not completed (status: ${match.status})`);
         return false;
       }
       
-      console.log(`[getByUserId] Match ${match._id} PASSED all filters`);
       return true;
     }).sort((a, b) => {
       const aTime = a.completedAt || 0;
@@ -214,16 +152,12 @@ export const getByUserId = query({
       return bTime - aTime;
     });
     
-    console.log(`[getByUserId] Matches after filtering: ${filteredMatches.length}`);
-    
     const uniqueMatches = filteredMatches;
 
     // Apply limit
     const limitedMatches = limit ? uniqueMatches.slice(0, limit) : uniqueMatches;
 
     // Get player info, tournament info, and user info for each match
-    console.log(`[getByUserId] Processing ${limitedMatches.length} matches for details`);
-    
     const matchesWithDetails = await Promise.all(
       limitedMatches.map(async (match) => {
         // CRITICAL: Final verification - match MUST have user's player ID as player1Id OR player2Id
@@ -231,16 +165,7 @@ export const getByUserId = query({
         const isUserPlayer1 = match.player1Id ? playerIds.has(match.player1Id) : false;
         const isUserPlayer2 = match.player2Id ? playerIds.has(match.player2Id) : false;
         
-        console.log(`[getByUserId] Processing match ${match._id}:`, {
-          player1Id: match.player1Id,
-          player2Id: match.player2Id,
-          isUserPlayer1,
-          isUserPlayer2,
-          tournamentId: match.tournamentId
-        });
-        
         if (!isUserPlayer1 && !isUserPlayer2) {
-          console.log(`[getByUserId] Excluding match ${match._id}: User's player ID not found`);
           // This match does not contain the user's player ID - exclude it
           return null;
         }
@@ -261,18 +186,14 @@ export const getByUserId = query({
         // Additional check: verify the player's userId matches (if userId exists on player)
         // This ensures we're not accidentally including matches from other users' players
         if (player1 && "userId" in player1 && player1.userId && player1.userId !== userId && player1IdMatches) {
-          console.log(`[getByUserId] Excluding match ${match._id}: Player1 userId (${player1.userId}) doesn't match requested userId (${userId})`);
           // Player1 belongs to a different user, but we matched by playerId - exclude it
           return null;
         }
         if (player2 && "userId" in player2 && player2.userId && player2.userId !== userId && player2IdMatches) {
-          console.log(`[getByUserId] Excluding match ${match._id}: Player2 userId (${player2.userId}) doesn't match requested userId (${userId})`);
           // Player2 belongs to a different user, but we matched by playerId - exclude it
           return null;
         }
         
-        console.log(`[getByUserId] Match ${match._id} INCLUDED in final results`);
-
         // Get user info for players
         let player1User = null;
         let player2User = null;
@@ -302,17 +223,7 @@ export const getByUserId = query({
 
     // Filter out null matches (where user wasn't actually a participant)
     const finalMatches = matchesWithDetails.filter(match => match !== null);
-    console.log(`[getByUserId] Final matches returned: ${finalMatches.length}`);
-    finalMatches.forEach((m, i) => {
-      console.log(`[getByUserId] Final match ${i}:`, {
-        _id: m._id,
-        tournamentId: m.tournamentId,
-        player1Id: m.player1Id,
-        player2Id: m.player2Id,
-        status: m.status
-      });
-    });
-    
+
     return finalMatches;
   },
 });

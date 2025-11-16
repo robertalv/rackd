@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
@@ -23,11 +23,12 @@ import { SharePostModal } from "./share-post-modal";
 
 interface PostCardProps {
   post: any;
+  highlight?: boolean;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, highlight = false }: PostCardProps) {
   if (post.tournamentId && post.tournament) {
-    return <TournamentPostCard post={post} />;
+    return <TournamentPostCard post={post} highlight={highlight} />;
   }
   const [showComments, setShowComments] = useState(false);
   const [showHiddenComments, setShowHiddenComments] = useState(false);
@@ -35,6 +36,8 @@ export function PostCard({ post }: PostCardProps) {
   const [editContent, setEditContent] = useState(post.content);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   
   const { user: currentUser } = useCurrentUser();
   const isLiked = useQuery(api.posts.isLiked, { postId: post._id });
@@ -51,6 +54,30 @@ export function PostCard({ post }: PostCardProps) {
       setShowHiddenComments(false);
     }
   }, [hiddenCommentsCount, showHiddenComments]);
+
+  // Handle post highlighting when shared link is clicked
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      setIsHighlighted(true);
+      
+      // Scroll to the post with smooth behavior
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      
+      // Remove highlight after 3 seconds
+      const timer = setTimeout(() => {
+        setIsHighlighted(false);
+      }, 3000);
+      
+      // Clean up URL query parameter
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("postId")) {
+        url.searchParams.delete("postId");
+        window.history.replaceState({}, "", url.toString());
+      }
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlight]);
   
   const isPostOwner = currentUser?._id === post.userId;
   
@@ -126,7 +153,30 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   return (
-    <Card className="mb-4 bg-accent/50 gap-2">
+    <>
+      {isHighlighted && (
+        <style>{`
+          @keyframes border-pulse {
+            0%, 100% { 
+              opacity: 1;
+            }
+            50% { 
+              opacity: 0.4;
+            }
+          }
+          .pulse-border {
+            animation: border-pulse 1s ease-in-out 3;
+          }
+        `}</style>
+      )}
+      <div ref={cardRef} className="mb-4">
+        <Card 
+          className={`bg-accent/50 gap-2 transition-all duration-300 ${
+            isHighlighted 
+              ? "ring-2 ring-primary border-primary shadow-lg pulse-border" 
+              : "ring-0 border-transparent"
+          }`}
+        >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -396,6 +446,8 @@ export function PostCard({ post }: PostCardProps) {
         onOpenChange={setShowReportDialog}
         postId={post._id}
       />
-    </Card>
+        </Card>
+      </div>
+    </>
   );
 }

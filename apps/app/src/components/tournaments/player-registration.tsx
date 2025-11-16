@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Search, UserPlus, CheckCircle, Clock, Plus, Trash2, Loader2, DollarSign } from "lucide-react";
 import type { PlayerSearchResult } from "@rackd/types";
 import { searchFargoRatePlayers, formatFargoRating, formatRobustness } from "@/lib/fargorate-api";
+import { ProfileAvatar } from "../profile-avatar";
 
 type Props = {
   tournamentId: Id<"tournaments">;
@@ -181,7 +182,7 @@ export function PlayerRegistration({ tournamentId }: Props) {
   }
 
   return (
-    <div className="space-y-6 h-full">
+    <div className="space-y-6 h-full p-4">
       {/* Tab Navigation */}
       <div className="flex gap-2">
         <Button
@@ -230,22 +231,18 @@ export function PlayerRegistration({ tournamentId }: Props) {
                     <TableRow key={registration._id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback>
-                              {registration.player?.name?.split(' ').map(n => n.charAt(0)).join('').slice(0, 2) ||
-                               registration.user?.name?.split(' ').map(n => n.charAt(0)).join('').slice(0, 2) ||
-                               'P'}
-                            </AvatarFallback>
-                          </Avatar>
+                          <ProfileAvatar
+                            user={{
+                              displayName: registration.player?.name || registration.user?.name || 'Unknown',
+                              image: registration.player?.avatarUrl || registration.user?.image || undefined
+                            }}
+                            size="sm"
+                          />
                           <div>
                             <div className="font-medium">
                               {registration.player?.name || registration.user?.name || 'Unknown'}
                             </div>
-                            {registration.player?.fargoId && (
-                              <div className="text-sm text-muted-foreground">
-                                Fargo ID: {registration.player.fargoId}
-                              </div>
-                            )}
+                          
                           </div>
                         </div>
                       </TableCell>

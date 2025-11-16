@@ -6,17 +6,23 @@ import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@rackd/ui/components/button";
-import { Input } from "@rackd/ui/components/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
 import { Label } from "@rackd/ui/components/label";
+import { HeaderLabel } from "@rackd/ui/components/label";
 import { Checkbox } from "@rackd/ui/components/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rackd/ui/components/select";
-import { Textarea } from "@rackd/ui/components/textarea";
 import { Calendar } from "@rackd/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@rackd/ui/components/popover";
 import { useNavigate } from "@tanstack/react-router";
-import { CalendarIcon, Save, Clock, Plus, Trash2 } from "lucide-react";
+import { Icon, Calendar02Icon, Time04Icon, Add01Icon, Delete03Icon } from "@rackd/ui/icons";
+import { Save } from "lucide-react";
 import { cn } from "@rackd/ui/lib/utils";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupTextarea,
+} from "@rackd/ui/components/input-group";
 import { VenueSearch } from "../venues/venue-search";
 import { SaveTemplateModal } from "./save-template-modal";
 import { AddTablesModal } from "./add-tables-modal";
@@ -235,266 +241,289 @@ export function TournamentForm() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon icon={Calendar02Icon} className="h-5 w-5" />
               Create New Tournament
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium border-b pb-2">Basic Information</h3>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* Basic Information */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <HeaderLabel size="lg">Basic Information</HeaderLabel>
+                </div>
 
-              {/* URL Importer */}
-              <TournamentUrlImporter onExtract={handleExtractInfo} />
+                {/* URL Importer */}
+                {/* TODO: Finish later. */}
+                {/* <TournamentUrlImporter onExtract={handleExtractInfo} /> */}
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Tournament Name *</Label>
-                <Input
-                  id="name"
-                  {...register("name", { required: true })}
-                  placeholder="e.g. Summer 9-Ball Open"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date & Time *</Label>
-                  <div className="flex gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "justify-start text-left font-normal flex-1 select-none focus-visible:ring-offset-2",
-                            !selectedDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {formatDate(selectedDate)}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          disabled={(date) => date < new Date()}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                  <Label htmlFor="name">Tournament Name *</Label>
+                  <InputGroup>
+                    <InputGroupInput
+                      id="name"
+                      {...register("name", { required: true })}
+                      placeholder="e.g. Summer 9-Ball Open"
+                    />
+                  </InputGroup>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date & Time *</Label>
+                    <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal flex-1 select-none focus-visible:ring-offset-2",
+                              !selectedDate && "text-muted-foreground"
+                            )}
+                          >
+                            <Icon icon={Calendar02Icon} className="h-4 w-4 mr-2" />
+                            {formatDate(selectedDate)}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={setSelectedDate}
+                            disabled={(date) => date < new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
 
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        type="time"
-                        {...register("time", { required: true })}
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.target.value)}
-                        className="pl-10 w-32 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                      />
+                      <InputGroup className="w-32">
+                        <InputGroupAddon align="inline-start">
+                          <Icon icon={Time04Icon} className="h-4 w-4" />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          type="time"
+                          {...register("time", { required: true })}
+                          value={selectedTime}
+                          onChange={(e) => setSelectedTime(e.target.value)}
+                          className="[&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        />
+                      </InputGroup>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue">Venue</Label>
+                    <VenueSearch
+                      value={watch("venueId")}
+                      onChange={(venueId) => setValue("venueId", venueId as Id<"venues">)}
+                      placeholder="Search venues..."
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="venue">Venue</Label>
-                  <VenueSearch
-                    value={watch("venueId")}
-                    onChange={(venueId) => setValue("venueId", venueId as Id<"venues">)}
-                    placeholder="Search venues..."
+                  <Label htmlFor="flyer">Tournament Flyer</Label>
+                  <TournamentFlyerUpload
+                    onUpload={handleFlyerUpload}
+                    onRemove={handleFlyerRemove}
+                    onError={handleFlyerError}
+                    onExtractInfo={handleExtractInfo}
+                    currentUrl={flyerUrl}
                   />
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="createPost"
+                    checked={createPost}
+                    onCheckedChange={(checked) => setCreatePost(checked === true)}
+                  />
+                  <Label
+                    htmlFor="createPost"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    Create a post about this tournament
+                  </Label>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="flyer">Tournament Flyer</Label>
-                <TournamentFlyerUpload
-                  onUpload={handleFlyerUpload}
-                  onRemove={handleFlyerRemove}
-                  onError={handleFlyerError}
-                  onExtractInfo={handleExtractInfo}
-                  currentUrl={flyerUrl}
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="createPost"
-                  checked={createPost}
-                  onCheckedChange={(checked) => setCreatePost(checked === true)}
-                />
-                <Label
-                  htmlFor="createPost"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Create a post about this tournament
-                </Label>
-              </div>
-            </div>
 
-            {/* Game Configuration */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium border-b pb-2">Game Configuration</h3>
+              {/* Game Configuration */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <HeaderLabel size="lg">Game Configuration</HeaderLabel>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gameType">Game Type *</Label>
+                    <Select onValueChange={(value) => setValue("gameType", value as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Game Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="eight_ball">
+                          <div className="flex items-center gap-2">
+                            <img src="/images/8ball.png" alt="8 Ball" width={20} height={20} className="rounded-full" />
+                            8 Ball
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="nine_ball">
+                          <div className="flex items-center gap-2">
+                            <img src="/images/9ball.png" alt="9 Ball" width={20} height={20} className="rounded-full" />
+                            9 Ball
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="ten_ball">
+                          <div className="flex items-center gap-2">
+                            <img src="/images/10ball.png" alt="10 Ball" width={20} height={20} className="rounded-full" />
+                            10 Ball
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="one_pocket">One Pocket</SelectItem>
+                        <SelectItem value="bank_pool">Bank Pool</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="playerType">Player Type *</Label>
+                    <Select onValueChange={(value) => setValue("playerType", value as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Player Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="singles">Singles (1v1)</SelectItem>
+                        <SelectItem value="doubles">Doubles (2v2)</SelectItem>
+                        <SelectItem value="scotch_doubles">Scotch Doubles (2v2 alternating)</SelectItem>
+                        <SelectItem value="teams">Teams</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Tournament Type *</Label>
+                    <Select onValueChange={(value) => setValue("type", value as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single Elimination</SelectItem>
+                        <SelectItem value="double">Double Elimination</SelectItem>
+                        <SelectItem value="scotch_double">Scotch Double</SelectItem>
+                        <SelectItem value="teams">Teams</SelectItem>
+                        <SelectItem value="round_robin">Round Robin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gameType">Game Type *</Label>
-                  <Select onValueChange={(value) => setValue("gameType", value as any)}>
+                  <Label htmlFor="bracketOrdering">Bracket Ordering *</Label>
+                  <Select onValueChange={(value) => setValue("bracketOrdering", value as any)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Game Type" />
+                      <SelectValue placeholder="Select Bracket Ordering" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="eight_ball">
-                        <div className="flex items-center gap-2">
-                          <img src="/images/8ball.png" alt="8 Ball" width={20} height={20} className="rounded-full" />
-                          8 Ball
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="nine_ball">
-                        <div className="flex items-center gap-2">
-                          <img src="/images/9ball.png" alt="9 Ball" width={20} height={20} className="rounded-full" />
-                          9 Ball
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="ten_ball">
-                        <div className="flex items-center gap-2">
-                          <img src="/images/10ball.png" alt="10 Ball" width={20} height={20} className="rounded-full" />
-                          10 Ball
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="one_pocket">One Pocket</SelectItem>
-                      <SelectItem value="bank_pool">Bank Pool</SelectItem>
+                      <SelectItem value="random_draw">Random Draw</SelectItem>
+                      <SelectItem value="seeded_draw">Seeded Draw</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {watch("bracketOrdering") === "random_draw" &&
+                      "Player order will be randomized using the Fisher-Yates shuffle algorithm"}
+                    {watch("bracketOrdering") === "seeded_draw" &&
+                      "Highest seeded player plays lowest seeded player, etc."}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="winnersRaceTo">Winners Race To</Label>
+                    <InputGroup>
+                      <InputGroupInput
+                        id="winnersRaceTo"
+                        {...register("winnersRaceTo", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="e.g. 7"
+                        min="1"
+                      />
+                    </InputGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="losersRaceTo">Losers Race To</Label>
+                    <InputGroup>
+                      <InputGroupInput
+                        id="losersRaceTo"
+                        {...register("losersRaceTo", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="e.g. 5"
+                        min="1"
+                      />
+                    </InputGroup>
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="playerType">Player Type *</Label>
-                  <Select onValueChange={(value) => setValue("playerType", value as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Player Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="singles">Singles (1v1)</SelectItem>
-                      <SelectItem value="doubles">Doubles (2v2)</SelectItem>
-                      <SelectItem value="scotch_doubles">Scotch Doubles (2v2 alternating)</SelectItem>
-                      <SelectItem value="teams">Teams</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tournament Type *</Label>
-                  <Select onValueChange={(value) => setValue("type", value as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="single">Single Elimination</SelectItem>
-                      <SelectItem value="double">Double Elimination</SelectItem>
-                      <SelectItem value="scotch_double">Scotch Double</SelectItem>
-                      <SelectItem value="teams">Teams</SelectItem>
-                      <SelectItem value="round_robin">Round Robin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bracketOrdering">Bracket Ordering *</Label>
-                <Select onValueChange={(value) => setValue("bracketOrdering", value as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Bracket Ordering" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="random_draw">Random Draw</SelectItem>
-                    <SelectItem value="seeded_draw">Seeded Draw</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  {watch("bracketOrdering") === "random_draw" &&
-                    "Player order will be randomized using the Fisher-Yates shuffle algorithm"}
-                  {watch("bracketOrdering") === "seeded_draw" &&
-                    "Highest seeded player plays lowest seeded player, etc."}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="winnersRaceTo">Winners Race To</Label>
-                  <Input
-                    id="winnersRaceTo"
-                    {...register("winnersRaceTo", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="e.g. 7"
-                    min="1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="losersRaceTo">Losers Race To</Label>
-                  <Input
-                    id="losersRaceTo"
-                    {...register("losersRaceTo", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="e.g. 5"
-                    min="1"
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Tournament Settings */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium border-b pb-2">Tournament Settings</h3>
+              {/* Tournament Settings */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <HeaderLabel size="lg">Tournament Settings</HeaderLabel>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxPlayers">Max Players</Label>
-                  <Input
-                    id="maxPlayers"
-                    {...register("maxPlayers", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="e.g. 32"
-                    min="2"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="maxPlayers">Max Players</Label>
+                    <InputGroup>
+                      <InputGroupInput
+                        id="maxPlayers"
+                        {...register("maxPlayers", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="e.g. 32"
+                        min="2"
+                      />
+                    </InputGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="entryFee">Entry Fee ($)</Label>
+                    <InputGroup>
+                      <InputGroupAddon align="inline-start">
+                        <span>$</span>
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        id="entryFee"
+                        {...register("entryFee", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="e.g. 25"
+                        min="0"
+                        step="0.01"
+                      />
+                    </InputGroup>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entryFee">Entry Fee ($)</Label>
-                  <Input
-                    id="entryFee"
-                    {...register("entryFee", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="e.g. 25"
-                    min="0"
-                    step="0.01"
-                  />
+                  <Label htmlFor="description">Description</Label>
+                  <InputGroup>
+                    <InputGroupTextarea
+                      id="description"
+                      {...register("description")}
+                      rows={3}
+                      placeholder="Tournament details, rules, prizes, etc."
+                    />
+                  </InputGroup>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  {...register("description")}
-                  rows={3}
-                  placeholder="Tournament details, rules, prizes, etc."
-                />
-              </div>
-            </div>
 
-            {/* Tables Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-lg font-medium">Tables</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowTablesModal(true)}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Tables
-                </Button>
-              </div>
+              {/* Tables Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <HeaderLabel size="lg">Tables</HeaderLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTablesModal(true)}
+                  >
+                    <Icon icon={Add01Icon} className="h-4 w-4 mr-1" />
+                    Add Tables
+                  </Button>
+                </div>
               {(!watch("tables") || watch("tables")?.length === 0) && !importVenueId && (
                 <div className="text-center py-8 border border-dashed border-border rounded-lg">
                   <p>No tables added yet.</p>
@@ -515,7 +544,7 @@ export function TournamentForm() {
                       onClick={() => setValue("importVenueId", undefined)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Icon icon={Delete03Icon} className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -553,7 +582,7 @@ export function TournamentForm() {
                               onClick={() => handleRemoveTable(index)}
                               className="text-red-600 hover:text-red-800"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Icon icon={Delete03Icon} className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -564,37 +593,38 @@ export function TournamentForm() {
               )}
             </div>
 
-            <div className="flex gap-2 pt-4">
-              {/* Turnstile widget - Commented out, only using on login/signup */}
-              {/* {turnstileSiteKey && (
-                <div ref={turnstileContainerRef} className="flex justify-center" />
-              )} */}
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="flex-1"
-              >
-                {isSubmitting ? "Creating..." : "Create Tournament"}
-              </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSaveTemplate}
-                >
-                <Save className="h-4 w-4 mr-1" />
-                Save as Template
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate({ to: "/tournaments" })}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                <div className="flex gap-2 pt-4 border-t border-border">
+                  {/* Turnstile widget - Commented out, only using on login/signup */}
+                  {/* {turnstileSiteKey && (
+                    <div ref={turnstileContainerRef} className="flex justify-center" />
+                  )} */}
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="flex-1"
+                  >
+                    {isSubmitting ? "Creating..." : "Create Tournament"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSaveTemplate}
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Save as Template
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate({ to: "/tournaments" })}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       <SaveTemplateModal
         open={showTemplateModal}
         onOpenChange={setShowTemplateModal}

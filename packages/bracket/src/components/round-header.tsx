@@ -16,6 +16,8 @@ export interface RoundHeaderProps {
   numOfRounds: number;
   tournamentRoundText: string;
   columnIndex: number;
+  rowIndex?: number; // Row index to determine if we should render background
+  gameWidth?: number; // Full width of the bracket for full-width background
 }
 
 const Text = styled.text`
@@ -24,6 +26,10 @@ const Text = styled.text`
 `;
 const Rect = styled.rect.attrs(({ theme }) => ({
   fill: theme.roundHeaders.background,
+}))``;
+const BorderLine = styled.line.attrs(({ theme }) => ({
+  stroke: theme.border.color,
+  strokeWidth: 1,
 }))``;
 
 export default function RoundHeader({
@@ -35,33 +41,33 @@ export default function RoundHeader({
   numOfRounds,
   tournamentRoundText,
   columnIndex,
+  rowIndex = 0,
+  gameWidth,
 }: RoundHeaderProps) {
   if (!roundHeader) {
     return null;
   }
 
+  const headerHeight = roundHeader.height ?? 0;
+  const headerY = y + canvasPadding;
+  
+  // Background and border are now rendered at the root SVG level
+  // RoundHeader only renders the text labels for each column
   return (
     <g>
-      <Rect
-        x={x}
-        y={y + canvasPadding}
-        width={width}
-        height={roundHeader.height ?? 0}
-        fill={roundHeader.backgroundColor ?? ''}
-        rx="3"
-        ry="3"
-      />
+      {/* Text centered in column - rendered for each column */}
       <Text
         x={x + width / 2}
-        y={y + canvasPadding + (roundHeader.height ?? 0) / 2}
+        y={headerY + headerHeight / 2 - 25}
         style={{
           fontFamily: roundHeader.fontFamily ?? '',
-          fontSize: `${roundHeader.fontSize ?? 16}px`,
+          fontSize: `${roundHeader.fontSize ?? 10}px`,
           color: roundHeader.fontColor ?? '',
         }}
         fill="currentColor"
         dominantBaseline="middle"
         textAnchor="middle"
+        className="uppercase"
       >
         {!roundHeader.roundTextGenerator &&
           columnIndex + 1 === numOfRounds &&

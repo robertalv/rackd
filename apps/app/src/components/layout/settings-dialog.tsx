@@ -39,10 +39,11 @@ interface SettingsDialogProps {
   sessionsManager?: React.ReactNode;
   interestsManager?: React.ReactNode;
   connectedAccounts?: React.ReactNode;
+  billingManager?: React.ReactNode;
   initialTab?: Tab;
 }
 
-export function SettingsDialog({ open, onOpenChange, user, profileSettings, dangerZone, sessionsManager, interestsManager, connectedAccounts, initialTab: initialTabProp }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, user, profileSettings, dangerZone, sessionsManager, interestsManager, connectedAccounts, billingManager, initialTab: initialTabProp }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = React.useState<Tab>(initialTabProp || "account")
 
   React.useEffect(() => {
@@ -181,7 +182,9 @@ export function SettingsDialog({ open, onOpenChange, user, profileSettings, dang
                       Manage your subscription and billing.
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">Coming soon...</p>
+                  {billingManager || (
+                    <p className="text-sm text-muted-foreground">Billing management coming soon...</p>
+                  )}
                 </div>
               )}
             </div>

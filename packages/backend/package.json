@@ -24,6 +24,8 @@
     "@convex-dev/resend": "^0.1.13",
     "@convex-dev/sharded-counter": "^0.1.8",
     "@rackd/cloudflare": "workspace:*",
+    "@useautumn/convex": "^0.0.15",
+    "autumn-js": "^0.1.47",
     "better-auth": "catalog:",
     "convex": "catalog:",
     "loops": "^6.0.1",

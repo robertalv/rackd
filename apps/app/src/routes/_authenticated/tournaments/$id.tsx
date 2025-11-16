@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { ResizableLayout } from "@/components/layout/resizable-layout";
 import { TournamentDashboard } from "@/components/tournaments/tournament-dashboard";
 import { TablesPlayersView } from "@/components/tournaments/tables-players-view";
+import { TournamentStats } from "@/components/tournaments/tournament-stats";
 import { TablesManagement } from "@/components/tournaments/tables-management";
 import { PlayerRegistration } from "@/components/tournaments/player-registration";
 import { PayoutCalculation } from "@/components/tournaments/payout-calculation";
@@ -21,39 +22,157 @@ import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/c
 import { ScrollArea } from "@rackd/ui/components/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rackd/ui/components/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@rackd/ui/components/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@rackd/ui/components/dropdown-menu";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { 
-  LayoutDashboard, 
-  Network, 
-  Table as TableIcon, 
-  Users, 
-  Gamepad2, 
-  Trophy, 
-  BarChart3, 
-  DollarSign, 
-  Settings,
-  MapPin,
-  Play,
-  ChevronRight,
-  Plus,
-  X,
-  RefreshCw
-} from "lucide-react";
+import { useTheme } from "@/providers/ThemeProvider";
+import {
+  Icon,
+  type IconProps,
+  Layout01Icon,
+  FlowSquareIcon,
+  TableIcon,
+  UserGroupIcon,
+  Billiard01Icon,
+  ChampionIcon,
+  WaterfallDown01Icon,
+  Dollar01Icon,
+  Settings01Icon,
+  Location03Icon,
+  PlayIcon,
+  ArrowRight01Icon,
+  Add01Icon,
+  Cancel01Icon,
+  RefreshIcon
+} from "@rackd/ui/icons";
 
 type ViewMode = "dashboard" | "bracket" | "tables" | "players" | "matches" | "results" | "stats" | "payouts" | "settings";
-type LeftPanelMode = "overview" | "players" | "status";
+type LeftPanelMode = "overview" | "players" | "stats";
 
 export const Route = createFileRoute("/_authenticated/tournaments/$id")({
   component: TournamentDetailPage,
 });
 
+type TournamentStorage = {
+  left: LeftPanelMode;
+  right: ViewMode;
+  zoom?: number;
+  resize: {
+    left: number;
+    right: number;
+  };
+};
+
 function TournamentDetailPage() {
   const { id } = Route.useParams();
   const tournamentId = id as Id<"tournaments">;
-  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
-  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>("overview");
+  
+  // Single storage key for this tournament
+  const storageKey = `tournament-${tournamentId}`;
+  
+  // Load saved state from localStorage
+  const getSavedState = (): Partial<TournamentStorage> => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Validate structure
+        const state: Partial<TournamentStorage> = {};
+        if (parsed.left && ["overview", "players", "stats"].includes(parsed.left)) {
+          state.left = parsed.left as LeftPanelMode;
+        }
+        if (parsed.right && [
+          "dashboard", "bracket", "tables", "players", "matches", 
+          "results", "stats", "payouts", "settings"
+        ].includes(parsed.right)) {
+          state.right = parsed.right as ViewMode;
+        }
+        if (parsed.resize && typeof parsed.resize.left === "number" && typeof parsed.resize.right === "number") {
+          state.resize = parsed.resize;
+        }
+        if (typeof parsed.zoom === "number" && parsed.zoom >= 25 && parsed.zoom <= 200) {
+          state.zoom = parsed.zoom;
+        }
+        return state;
+      }
+    } catch (error) {
+      console.error("Failed to load saved tournament state:", error);
+    }
+    return {};
+  };
+  
+  const savedState = getSavedState();
+  
+  const [viewMode, setViewMode] = useState<ViewMode>(savedState.right || "dashboard");
+  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>(savedState.left || "overview");
+  const [zoom, setZoom] = useState<number>(savedState.zoom ?? 80);
   const [showAddManagerDialog, setShowAddManagerDialog] = useState(false);
   const currentUser = useCurrentUser();
+  const { resolvedTheme } = useTheme();
+  
+  // Save state to localStorage whenever it changes
+  const saveState = useCallback((updates: Partial<TournamentStorage>) => {
+    if (typeof window === "undefined") return;
+    try {
+      // Get current state from localStorage
+      let current: Partial<TournamentStorage> = {};
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.left && ["overview", "players", "stats"].includes(parsed.left)) {
+            current.left = parsed.left as LeftPanelMode;
+          }
+          if (parsed.right && [
+            "dashboard", "bracket", "tables", "players", "matches", 
+            "results", "stats", "payouts", "settings"
+          ].includes(parsed.right)) {
+            current.right = parsed.right as ViewMode;
+          }
+          if (parsed.resize && typeof parsed.resize.left === "number" && typeof parsed.resize.right === "number") {
+            current.resize = parsed.resize;
+          }
+          if (typeof parsed.zoom === "number" && parsed.zoom >= 25 && parsed.zoom <= 200) {
+            current.zoom = parsed.zoom;
+          }
+        }
+      } catch {
+        // Ignore parse errors, use defaults
+      }
+      
+      const newState: TournamentStorage = {
+        left: updates.left ?? current.left ?? "overview",
+        right: updates.right ?? current.right ?? "dashboard",
+        zoom: updates.zoom ?? current.zoom ?? 80,
+        resize: updates.resize ?? current.resize ?? { left: 30, right: 70 },
+      };
+      localStorage.setItem(storageKey, JSON.stringify(newState));
+    } catch (error) {
+      console.error("Failed to save tournament state:", error);
+    }
+  }, [storageKey]);
+  
+  // Save left panel mode
+  useEffect(() => {
+    saveState({ left: leftPanelMode });
+  }, [leftPanelMode, saveState]);
+  
+  // Save view mode
+  useEffect(() => {
+    saveState({ right: viewMode });
+  }, [viewMode, saveState]);
+  
+  // Save zoom level
+  useEffect(() => {
+    saveState({ zoom });
+  }, [zoom, saveState]);
+  
+  // Handle resize changes
+  const handleResizeChange = useCallback((sizes: number[]) => {
+    if (sizes.length >= 2) {
+      saveState({ resize: { left: sizes[0], right: sizes[1] } });
+    }
+  }, [saveState]);
 
   const tournament = useQuery(api.tournaments.getById, { id: tournamentId });
   const matches = useQuery(api.matches.getByTournament, { tournamentId });
@@ -150,21 +269,21 @@ function TournamentDetailPage() {
     }
   };
 
-  const actionButtons: { mode: ViewMode; label: string; icon: typeof LayoutDashboard }[] = [
-    { mode: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { mode: "bracket", label: "Bracket", icon: Network },
+  const actionButtons: { mode: ViewMode; label: string; icon: IconProps["icon"] }[] = [
+    { mode: "dashboard", label: "Dashboard", icon: Layout01Icon },
+    { mode: "bracket", label: "Bracket", icon: FlowSquareIcon },
     { mode: "tables", label: "Tables", icon: TableIcon },
-    { mode: "players", label: "Players", icon: Users },
-    { mode: "matches", label: "Matches", icon: Gamepad2 },
-    { mode: "results", label: "Results", icon: Trophy },
-    { mode: "stats", label: "Stats", icon: BarChart3 },
-    { mode: "payouts", label: "Payouts", icon: DollarSign },
-    { mode: "settings", label: "Settings", icon: Settings },
+    { mode: "players", label: "Players", icon: UserGroupIcon },
+    { mode: "matches", label: "Matches", icon: Billiard01Icon },
+    { mode: "results", label: "Results", icon: ChampionIcon },
+    { mode: "stats", label: "Stats", icon: WaterfallDown01Icon },
+    { mode: "payouts", label: "Payouts", icon: Dollar01Icon },
+    { mode: "settings", label: "Settings", icon: Settings01Icon },
   ];
 
   // Left Panel Content
   const leftPanelContent = (
-    <div className="flex h-full flex-col border-r">
+    <div className="flex h-full flex-col border-r bg-muted/50">
       {/* Left Action Bar */}
       <div className="border-b px-4 py-3.5">
         <div className="flex items-center gap-2 overflow-x-auto">
@@ -184,16 +303,30 @@ function TournamentDetailPage() {
           >
             Player List
           </Button>
+          <Button 
+            variant={leftPanelMode === "stats" ? "secondary" : "ghost"} 
+            size="sm" 
+            className="flex-shrink-0"
+            onClick={() => setLeftPanelMode("stats")}
+          >
+            Stats
+          </Button>
         </div>
       </div>
-      <ScrollArea className="flex-1">
-        {leftPanelMode === "players" ? (
+      {leftPanelMode === "players" ? (
+        <div className="flex-1 min-h-0">
           <TablesPlayersView tournamentId={tournamentId} onManagePlayers={() => setViewMode("players")} />
-        ) : (
-          <div className="p-4 space-y-6">
+        </div>
+      ) : leftPanelMode === "stats" ? (
+        <div className="flex-1 min-h-0">
+          <TournamentStats tournamentId={tournamentId} />
+        </div>
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
           {/* Completion Percentage */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg">Tournament Progress</CardTitle>
             </CardHeader>
             <CardContent>
@@ -221,41 +354,127 @@ function TournamentDetailPage() {
               className="w-full"
               size="lg"
             >
-              <Play className="h-4 w-4 mr-2" />
+              <Icon icon={PlayIcon} className="h-4 w-4 mr-2" />
               Start Tournament
             </Button>
           )}
 
           {/* Venue Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">VENUE</CardTitle>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Venue</CardTitle>
             </CardHeader>
             <CardContent>
               {venue ? (
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium">{venue.name}</div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {venue.address}
-                        {venue.city && `, ${venue.city}`}
-                        {venue.region && `, ${venue.region}`}
-                        {venue.country && ` ${venue.country}`}
+                <div className="space-y-3">
+                  {/* Venue Image */}
+                  {venue && venue.imageUrl && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="w-full relative group cursor-pointer rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors">
+                          <div className="aspect-video w-full bg-muted relative">
+                            <img
+                              src={venue.imageUrl}
+                              alt={venue.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1 text-xs font-medium">
+                              View Details
+                            </div>
+                          </div>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-80 p-0">
+                        <div className="space-y-2">
+                          {/* Map Preview */}
+                          <div className="w-full h-48 rounded-t-lg overflow-hidden border-b">
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              style={{ 
+                                border: 0,
+                                filter: resolvedTheme === "dark" ? "invert(0.92) hue-rotate(180deg) brightness(0.85) contrast(1.1)" : "none"
+                              }}
+                              loading="lazy"
+                              allowFullScreen
+                              referrerPolicy="no-referrer-when-downgrade"
+                              src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyCMATXv8JTcYrllKHglpuvYdiwrR0o99eE&q=${encodeURIComponent(
+                                venue.coordinates 
+                                  ? `${venue.coordinates.lat},${venue.coordinates.lng}`
+                                  : venue.address 
+                                    ? `${venue.address}, ${[venue.city, venue.region, venue.country].filter(Boolean).join(", ")}`
+                                    : [venue.address, venue.city, venue.region, venue.country].filter(Boolean).join(", ") || ''
+                              )}`}
+                            />
+                          </div>
+                          {/* View Venue Button */}
+                          <div className="p-3">
+                            <Link
+                              to="/venues/$id"
+                              params={{ id: venue._id }}
+                              className="block"
+                            >
+                              <Button className="w-full" size="sm">
+                                View Venue
+                                <Icon icon={ArrowRight01Icon} className="h-4 w-4 ml-2" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  
+                  {/* Venue Info */}
+                  <Link
+                    to="/venues/$id"
+                    params={{ id: venue._id }}
+                    className="block"
+                  >
+                    <div className="space-y-2 cursor-pointer hover:opacity-80 transition-opacity">
+                      <div className="flex items-start gap-2">
+                        <Icon icon={Location03Icon} className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{venue.name}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {venue.address}
+                            {venue.city && `, ${venue.city}`}
+                            {venue.region && `, ${venue.region}`}
+                            {venue.country && ` ${venue.country}`}
+                          </div>
+                        </div>
+                        <Icon icon={ArrowRight01Icon} className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </div>
+                  </Link>
+                </div>
+              ) : tournament.venueId ? (
+                <div className="space-y-3">
+                  {/* Venue Info - venue query may still be loading */}
+                  <Link
+                    to="/venues/$id"
+                    params={{ id: tournament.venueId }}
+                    className="block"
+                  >
+                    <div className="space-y-2 cursor-pointer hover:opacity-80 transition-opacity">
+                      <div className="flex items-start gap-2">
+                        <Icon icon={Location03Icon} className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{tournament.venue || "Venue"}</div>
+                        </div>
+                        <Icon icon={ArrowRight01Icon} className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               ) : tournament.venue ? (
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <Icon icon={Location03Icon} className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{tournament.venue}</div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   </div>
                 </div>
               ) : (
@@ -265,8 +484,8 @@ function TournamentDetailPage() {
           </Card>
 
           {/* Managers Section */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">MANAGERS</CardTitle>
                 {isOrganizer && (
@@ -275,7 +494,7 @@ function TournamentDetailPage() {
                     size="sm"
                     onClick={() => setShowAddManagerDialog(true)}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Icon icon={Add01Icon} className="h-4 w-4 mr-1" />
                     Add Manager
                   </Button>
                 )}
@@ -345,7 +564,7 @@ function TournamentDetailPage() {
                               onClick={() => handleRemoveManager(manager.userId)}
                               className="h-8 w-8 p-0"
                             >
-                              <X className="h-4 w-4" />
+                              <Icon icon={Cancel01Icon} className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         )}
@@ -356,9 +575,9 @@ function TournamentDetailPage() {
               </Table>
             </CardContent>
           </Card>
-        </div>
-        )}
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 
@@ -380,7 +599,7 @@ function TournamentDetailPage() {
                   onClick={handleRegenerateBracket}
                   className="flex items-center gap-2"
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <Icon icon={RefreshIcon} className="h-4 w-4" />
                   Regenerate Bracket
                 </Button>
               </div>
@@ -390,6 +609,9 @@ function TournamentDetailPage() {
                 matches={matches} 
                 tournamentType={tournament.type}
                 tournamentId={tournamentId}
+                tournamentName={tournament.name}
+                zoom={zoom}
+                onZoomChange={setZoom}
               />
             </div>
           </div>
@@ -451,6 +673,7 @@ function TournamentDetailPage() {
               }}
               className="flex-shrink-0"
               badgePosition="bottom-right"
+              tooltipPosition="bottom"
             />
           ))}
         </div>
@@ -469,8 +692,8 @@ function TournamentDetailPage() {
           leftPanel={{
             content: leftPanelContent,
             label: "Tournament Info",
-            icon: LayoutDashboard,
-            defaultSize: 30,
+            icon: Layout01Icon,
+            defaultSize: savedState.resize?.left ?? 30,
             minSize: 20,
             maxSize: 40,
             minWidth: "20rem",
@@ -478,11 +701,13 @@ function TournamentDetailPage() {
           rightPanel={{
             content: rightPanelContent,
             label: "Content",
-            icon: LayoutDashboard,
-            defaultSize: 70,
+            icon: Layout01Icon,
+            defaultSize: savedState.resize?.right ?? 70,
           }}
           defaultTab="right"
           className="flex-1"
+          storageKey={storageKey}
+          onResizeChange={handleResizeChange}
         />
       </div>
       <AddManagerDialog

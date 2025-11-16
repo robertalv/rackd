@@ -146,7 +146,10 @@ export function DiscoverPlayersTable({ searchQuery, filters }: DiscoverPlayersTa
                       size="xs" 
                     />
                     <div>
-                      <Link to={`/${player.username || player.userId}`}>
+                      <Link 
+                        to="/$username" 
+                        params={{ username: player.username || player.userId }}
+                      >
                         <p className="font-medium hover:text-primary">{player.name}</p>
                       </Link>
                       {player.username && (
@@ -198,7 +201,10 @@ export function DiscoverPlayersTable({ searchQuery, filters }: DiscoverPlayersTa
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-2">
-                    <Link to={`/${player.username || player.userId}`}>
+                    <Link 
+                      to="/$username" 
+                      params={{ username: player.username || player.userId }}
+                    >
                       <Button size="sm" variant="outline">
                         View Profile
                       </Button>

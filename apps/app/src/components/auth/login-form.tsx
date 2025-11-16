@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { LogoIcon } from "@/components/logo";
 import { Icon, Mail01Icon } from "@rackd/ui/icons";
+import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
+import { verifyTurnstileToken } from "@/lib/functions/verify-turnstile";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -24,6 +26,21 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  
+  // Turnstile bot protection
+  const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile, isLoading: turnstileLoading } = useTurnstile({
+    siteKey: turnstileSiteKey || "",
+    theme: "auto",
+    size: "normal",
+    onError: (error) => {
+      console.error("Turnstile error:", error);
+      // Error 110200 typically means invalid site key or hostname mismatch
+      if (error.includes("110200")) {
+        console.error("Turnstile error 110200: Check that your site key matches Cloudflare and the current hostname is configured");
+      }
+    },
+  });
 
   const {
     register,
@@ -38,6 +55,40 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
+      // Verify Turnstile token if site key is configured
+      if (turnstileSiteKey) {
+        if (!turnstileToken) {
+          setError("root", {
+            message: "Please complete the security verification.",
+          });
+          toast.error("Security verification required", {
+            description: "Please complete the security check below.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Verify the token on the server
+        const verification = await (verifyTurnstileToken as any)({ token: turnstileToken }) as {
+          success: boolean;
+          verified?: boolean;
+          error?: string;
+          hostname?: string;
+        };
+        
+        if (!verification.success || !verification.verified) {
+          setError("root", {
+            message: verification.error || "Security verification failed. Please try again.",
+          });
+          toast.error("Verification failed", {
+            description: verification.error || "Please complete the security check again.",
+          });
+          resetTurnstile();
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const result = await authClient.signIn.email({
         email: data.email,
         password: data.password,
@@ -51,8 +102,13 @@ export function LoginForm() {
         description: "You have successfully signed in.",
       });
 
+      // Reset Turnstile after successful login
+      if (turnstileSiteKey) {
+        resetTurnstile();
+      }
+
       // Redirect to home page
-      navigate({ to: "/" });
+      navigate({ to: "/", search: { postId: undefined } });
     } catch (error: any) {
       const errorMessage = 
         error?.message || 
@@ -189,11 +245,18 @@ export function LoginForm() {
               )}
             </div>
 
+            {/* Turnstile widget - floating bottom right */}
+            {turnstileSiteKey && (
+              <div className="fixed bottom-4 right-4 z-50">
+                <div ref={turnstileContainerRef} />
+              </div>
+            )}
+
             <Button 
               type="submit"
               size="lg"
               variant="auth"
-              disabled={isLoading}
+              disabled={isLoading || (turnstileSiteKey && (!turnstileToken || turnstileLoading))}
               className="w-full"
             >
               <Icon icon={Mail01Icon} className="h-4 w-4" />

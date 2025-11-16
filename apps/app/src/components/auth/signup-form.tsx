@@ -15,6 +15,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { LogoIcon } from "@/components/logo";
 import { Icon, Mail01Icon } from "@rackd/ui/icons";
+import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
+import { verifyTurnstileToken } from "@/lib/functions/verify-turnstile";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -42,6 +44,17 @@ export function SignupForm() {
   const navigate = useNavigate();
   const syncUserToCustomTable = useMutation(api.auth.syncUserToCustomTable);
   const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
+  
+  // Turnstile bot protection
+  const turnstileSiteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY;
+  const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile, isLoading: turnstileLoading } = useTurnstile({
+    siteKey: turnstileSiteKey || "",
+    theme: "auto",
+    size: "normal",
+    onError: (error) => {
+      console.error("Turnstile error:", error);
+    },
+  });
 
   const {
     register,
@@ -87,6 +100,40 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
+      // Verify Turnstile token if site key is configured
+      if (turnstileSiteKey) {
+        if (!turnstileToken) {
+          setError("root", {
+            message: "Please complete the security verification.",
+          });
+          toast.error("Security verification required", {
+            description: "Please complete the security check below.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Verify the token on the server
+        const verification = await (verifyTurnstileToken as any)({ token: turnstileToken }) as {
+          success: boolean;
+          verified?: boolean;
+          error?: string;
+          hostname?: string;
+        };
+        
+        if (!verification.success || !verification.verified) {
+          setError("root", {
+            message: verification.error || "Security verification failed. Please try again.",
+          });
+          toast.error("Verification failed", {
+            description: verification.error || "Please complete the security check again.",
+          });
+          resetTurnstile();
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const result = await authClient.signUp.email({
         email: data.email,
         password: data.password,
@@ -96,8 +143,6 @@ export function SignupForm() {
       if (result.error) {
         throw result.error;
       }
-
-      console.log("Signup result:", result);
 
       const betterAuthUserId = result.data?.user?.id;
 
@@ -110,7 +155,6 @@ export function SignupForm() {
           username: data.username.toLowerCase(),
           betterAuthUserId,
         });
-        console.log("User synced to custom table");
       } catch (err: any) {
         console.warn("Failed to sync user to custom table:", err);
         // If username error, show it to user
@@ -129,9 +173,6 @@ export function SignupForm() {
       // Create player profile immediately
       try {
         const player = await createPlayerProfile();
-        if (player) {
-          console.log("Player profile created/verified:", player);
-        }
       } catch (err: any) {
         // Player profile creation is idempotent, so errors are non-critical
         console.warn("Failed to create player profile (may already exist):", err);
@@ -142,10 +183,15 @@ export function SignupForm() {
         description: "You have successfully signed up.",
       });
 
+      // Reset Turnstile after successful signup
+      if (turnstileSiteKey) {
+        resetTurnstile();
+      }
+
       // Redirect to home page after successful signup
-      navigate({ to: "/" });
+      navigate({ to: "/", search: { postId: undefined } })
     } catch (error: any) {
-      console.error('❌ Signup error:', error);
+      console.error('Signup error:', error);
       const errorMessage = 
         error?.message || 
         error?.code === "EMAIL_ALREADY_EXISTS"
@@ -415,11 +461,18 @@ export function SignupForm() {
               )}
             </div>
 
+            {/* Turnstile widget - floating bottom right */}
+            {turnstileSiteKey && (
+              <div className="fixed bottom-4 right-4 z-50">
+                <div ref={turnstileContainerRef} />
+              </div>
+            )}
+
             <Button 
               type="submit"
               size="lg"
               variant="auth"
-              disabled={isLoading}
+              disabled={isLoading || (turnstileSiteKey && (!turnstileToken || turnstileLoading))}
               className="w-full"
             >
               <Icon icon={Mail01Icon} className="h-4 w-4" />

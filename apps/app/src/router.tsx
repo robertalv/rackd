@@ -5,6 +5,11 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { routeTree } from "./routeTree.gen";
 import Loader from "@/components/loader";
+import { initSentry } from "@/lib/sentry.client";
+
+if (typeof window !== "undefined") {
+	initSentry();
+}
 
 export function getRouter() {
 	const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!;

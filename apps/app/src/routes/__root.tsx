@@ -7,7 +7,6 @@ import {
 	createRootRouteWithContext,
 	useRouteContext,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
 import type { ConvexReactClient } from "convex/react";
@@ -24,7 +23,11 @@ import { authClient } from "@/lib/auth-client";
 import { createAuth } from "@rackd/backend/convex/auth";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SettingsProvider } from "@/providers/SettingsProvider";
+import { AutumnProvider } from "@/providers/AutumnProvider";
 import '@rackd/ui/globals.css';
+import { setSentryUser, clearSentryUser } from "@/lib/sentry.client";
+import { useEffect } from "react";
+import * as Sentry from "@sentry/react";
 
 const fetchAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const { session } = await fetchSession(getRequest());
@@ -44,6 +47,18 @@ export interface RouterAppContext {
 	token?: string;
 }
 
+const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'development';
+
+// CSP policy - more lenient in development for Vite HMR, stricter in production
+const getCSPPolicy = () => {
+	if (isDevelopment) {
+		// Development CSP: Allow Vite HMR and more permissive settings
+		return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob: http:; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://*.sentry.io https://o4510354603835392.ingest.us.sentry.io; frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';";
+	}
+	// Production CSP: Stricter policy
+	return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com https://*.convex.cloud https://*.convex.site https://api.useautumn.com https://*.useautumn.com https://*.sentry.io https://o4510354603835392.ingest.us.sentry.io; frame-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';";
+};
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
 	head: () => ({
 		meta: [
@@ -56,6 +71,10 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 			},
 			{
 				title: "Rackd | Your AI-powered billiard partner",
+			},
+			{
+				httpEquiv: "Content-Security-Policy",
+				content: getCSPPolicy(),
 			},
 		],
 	}),
@@ -79,20 +98,35 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
+
+	useEffect(() => {
+		if (context.userId) {
+			setSentryUser({
+				id: context.userId,
+			});
+		} else {
+			clearSentryUser();
+		}
+	}, [context.userId]);
+
 	return (
-		<RootDocument>
-			<ThemeProvider defaultTheme="light">
-				<ConvexBetterAuthProvider
-					client={context.convexClient}
-					authClient={authClient}
-				>
-					<SettingsProvider>
-						<Outlet />
-						<Toaster richColors />
-					</SettingsProvider>
-				</ConvexBetterAuthProvider>
-			</ThemeProvider>
-		</RootDocument>
+		<Sentry.ErrorBoundary fallback={<ErrorFallback />} showDialog>
+			<RootDocument>
+				<ThemeProvider defaultTheme="light">
+					<ConvexBetterAuthProvider
+						client={context.convexClient}
+						authClient={authClient}
+					>
+						<AutumnProvider convexClient={context.convexClient}>
+							<SettingsProvider>
+								<Outlet />
+								<Toaster richColors />
+							</SettingsProvider>
+						</AutumnProvider>
+					</ConvexBetterAuthProvider>
+				</ThemeProvider>
+			</RootDocument>
+		</Sentry.ErrorBoundary>
 	);
 }
 
@@ -106,9 +140,28 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 				<div className="grid h-svh grid-rows-[auto_1fr]">
 					{children}
 				</div>
-				<TanStackRouterDevtools position="bottom-left" />
+				{/* <TanStackRouterDevtools position="bottom-left" /> */}
 				<Scripts />
 			</body>
 		</html>
+	);
+}
+
+function ErrorFallback() {
+	return (
+		<div className="flex min-h-screen items-center justify-center bg-background p-4">
+			<div className="text-center space-y-4 max-w-md">
+				<h1 className="text-2xl font-bold">Something went wrong</h1>
+				<p className="text-muted-foreground">
+					We've been notified about this error and are working on fixing it.
+				</p>
+				<button
+					onClick={() => window.location.reload()}
+					className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+				>
+					Reload Page
+				</button>
+			</div>
+		</div>
 	);
 }

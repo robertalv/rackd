@@ -1,0 +1,101 @@
+# CodeRabbit Configuration for rackd
+# Documentation: https://docs.coderabbit.ai/reference/config-file
+
+# Language settings
+language:
+  enabled:
+    - typescript
+    - javascript
+    - tsx
+    - jsx
+  # Focus on your main apps and packages
+  exclude:
+    - "**/*.d.ts"
+    - "**/_generated/**"
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.turbo/**"
+    - "**/*.config.js"
+    - "**/*.config.mjs"
+
+# Review settings
+reviews:
+  # Review all pull requests
+  enabled: true
+  
+  # Focus areas for your stack
+  focus:
+    - "typescript"
+    - "react"
+    - "react-native"
+    - "convex"
+    - "monorepo"
+  
+  # Paths to prioritize in reviews
+  paths:
+    include:
+      - "apps/**"
+      - "packages/**"
+    exclude:
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/build/**"
+      - "**/_generated/**"
+      - "**/*.lock"
+      - "**/.turbo/**"
+
+# Code quality settings
+quality:
+  # Enforce TypeScript best practices
+  typescript:
+    strict: true
+  
+  # React/React Native specific checks
+  react:
+    hooks: true
+    accessibility: true
+  
+  # Security checks
+  security: true
+  
+  # Performance checks
+  performance: true
+
+# Chat and assistance
+chat:
+  enabled: true
+  
+# Summaries
+summaries:
+  # Generate PR summaries
+  enabled: true
+  
+  # Generate release notes
+  release_notes:
+    enabled: true
+
+# Ignore patterns (files/folders CodeRabbit should skip)
+ignore:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/_generated/**"
+  - "**/.turbo/**"
+  - "**/*.lock"
+  - "**/ios/Pods/**"
+  - "**/android/**/build/**"
+
+# Monorepo specific settings
+monorepo:
+  # Detect changes across workspace
+  workspace_detection: true
+  
+  # Review dependent packages when root changes
+  review_dependencies: true
+
+# Early access features
+early_access:
+  # Enable experimental features
+  enable: false
+

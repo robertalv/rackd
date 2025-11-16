@@ -7,6 +7,7 @@ import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Button } from "@rackd/ui/components/button";
 import { Card, CardContent } from "@rackd/ui/components/card";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { CountryFlag } from "../country-flag";
 import { AddTablesModal } from "./add-tables-modal";
 import { EditTableModal } from "./edit-table-modal";
 import {
@@ -16,6 +17,8 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@rackd/ui/components/dialog";
+import { HeaderLabel } from "@rackd/ui/components/label";
+import { Badge } from "@rackd/ui/components/badge";
 
 type TabType = "all" | "in_use";
 
@@ -135,6 +138,8 @@ export function TablesManagement({ tournamentId }: TablesManagementProps) {
 		);
 	}
 
+	console.log("matches", matches);
+
 	return (
 		<div className="h-full flex flex-col bg-background">
 			{/* Tabs */}
@@ -228,49 +233,36 @@ export function TablesManagement({ tournamentId }: TablesManagementProps) {
 									<div className={`aspect-video rounded-lg flex items-center justify-center mb-3 relative overflow-hidden ${
 										isClosed ? "bg-gray-900/30" : "bg-blue-900/30"
 									}`}>
-										{/* Pool Table Shape */}
+										{/* Pool Table SVG */}
 										<div className="w-full h-full relative">
-											{/* Table Surface */}
-											<div className={`absolute inset-2 rounded-lg ${
-												isClosed ? "bg-gray-700" : "bg-blue-700"
-											}`}></div>
-											{/* Pockets */}
-											{/* Top Left */}
-											<div className="absolute -top-3 -left-3 w-4 h-4 bg-black rounded-full translate-x-1/2 translate-y-1/2"></div>
-											{/* Top Right */}
-											<div className="absolute -top-1 -right-1 w-4 h-4 bg-black rounded-full"></div>
-											{/* Top Center */}
-											<div className="absolute top-0 left-1/2 w-4 h-4 bg-black rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-											{/* Bottom Left */}
-											<div className="absolute -bottom-3 -left-3 w-4 h-4 bg-black rounded-full translate-x-1/2 -translate-y-1/2"></div>
-											{/* Bottom Right */}
-											<div className="absolute bottom-1 right-1 w-4 h-4 bg-black rounded-full translate-x-1/2 translate-y-1/2"></div>
-											{/* Bottom Center */}
-											<div className="absolute bottom-0 left-1/2 w-4 h-4 bg-black rounded-full -translate-x-1/2 translate-y-1/2"></div>
-
-											{/* Content */}
+											<img 
+												src="/pool-table.svg" 
+												alt="Pool Table" 
+												className={`w-full h-full object-contain ${isClosed ? "opacity-50 grayscale" : ""}`}
+											/>
+											{/* Content Overlay */}
 											{isInUse && currentMatch ? (
 												<div className="absolute inset-0 flex flex-col items-center justify-center p-4">
 													<div className="w-full space-y-3">
 														{/* Player 1 */}
 														<div className="flex items-center justify-between px-4">
 															<div className="flex items-center gap-2">
-																<span className="text-lg">🇺🇸</span>
-																<span className="text-sm font-medium">{currentMatch.player1?.name || "TBD"}</span>
+																<CountryFlag countryCode={(currentMatch.player1 as any)?.country || "USA"} />
+																<HeaderLabel size="lg" className="text-white">{currentMatch.player1?.name || "TBD"}</HeaderLabel>
 															</div>
-															<div className="px-2 py-1 bg-background rounded text-xs font-medium">
+															<Badge className="bg-blue-950/20 text-md font-bold">
 																{currentMatch.player1Score || 0}
-															</div>
+															</Badge>
 														</div>
 														{/* Player 2 */}
 														<div className="flex items-center justify-between px-4">
 															<div className="flex items-center gap-2">
-																<span className="text-lg">🇺🇸</span>
-																<span className="text-sm font-medium">{currentMatch.player2?.name || "TBD"}</span>
+																<CountryFlag countryCode={(currentMatch.player2 as any)?.country || "USA"} />
+																<HeaderLabel size="lg" className="text-white">{currentMatch.player2?.name || "TBD"}</HeaderLabel>
 															</div>
-															<div className="px-2 py-1 bg-background rounded text-xs font-medium">
+															<Badge className="bg-blue-950/20 text-md font-bold">
 																{currentMatch.player2Score || 0}
-															</div>
+															</Badge>
 														</div>
 													</div>
 												</div>
@@ -279,7 +271,7 @@ export function TablesManagement({ tournamentId }: TablesManagementProps) {
 													CLOSED
 												</span>
 											) : (
-												<span className="absolute inset-0 flex items-center justify-center text-muted-foreground font-medium text-lg">
+												<span className="absolute inset-0 flex items-center justify-center text-white font-medium text-lg">
 													OPEN
 												</span>
 											)}

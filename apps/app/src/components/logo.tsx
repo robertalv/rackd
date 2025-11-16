@@ -3,7 +3,7 @@ import { cn } from "@rackd/ui/lib/utils";
 
 export function LogoIcon({ className }: { className?: string }) {
   return (
-    <Link to="/" aria-label="go home">
+    <Link to="/" search={{ postId: undefined }} aria-label="go home">
       <img 
         src="/logo.png" 
         alt="rackd" 

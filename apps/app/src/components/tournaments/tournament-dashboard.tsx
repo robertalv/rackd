@@ -4,11 +4,12 @@ import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
 import { ScrollArea } from "@rackd/ui/components/scroll-area";
 import { 
-  Users, 
-  Trophy,
-  DollarSign,
-  Clock
-} from "lucide-react";
+  Icon,
+  UserGroupIcon,
+  ChampionIcon,
+  Dollar01Icon,
+  Clock01Icon
+} from "@rackd/ui/icons";
 
 interface TournamentDashboardProps {
   tournamentId: Id<"tournaments">;
@@ -55,11 +56,11 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         {/* Tournament Progress */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tournament Progress</CardTitle>
+        <Card className="bg-accent/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Tournament Progress</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -73,7 +74,7 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
               </div>
               {tournament.status === "active" && (
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Icon icon={Clock01Icon} className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Tournament is LIVE</span>
                 </div>
               )}
@@ -82,9 +83,9 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
         </Card>
 
         {/* Tournament Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tournament Details</CardTitle>
+        <Card className="bg-accent/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Tournament Details</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -174,10 +175,10 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Matches Card */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
+                <Icon icon={ChampionIcon} className="h-5 w-5" />
                 MATCHES ({totalMatches})
               </CardTitle>
             </CardHeader>
@@ -200,10 +201,10 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
           </Card>
 
           {/* Players Card */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="h-5 w-5" />
+                <Icon icon={UserGroupIcon} className="h-5 w-5" />
                 PLAYERS ({playerCount?.total || 0})
               </CardTitle>
             </CardHeader>
@@ -226,10 +227,10 @@ export function TournamentDashboard({ tournamentId }: TournamentDashboardProps) 
           </Card>
 
           {/* Payouts Card */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-accent/50">
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <Icon icon={Dollar01Icon} className="h-5 w-5" />
                 PAYOUTS
               </CardTitle>
             </CardHeader>

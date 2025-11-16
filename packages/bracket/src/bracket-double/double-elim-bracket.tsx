@@ -209,6 +209,7 @@ const DoubleEliminationBracket = ({
               <RoundHeaders
                 {...{
                   numOfRounds: totalNumOfRounds,
+                  gameWidth,
                   calculatedStyles,
                 }}
               />

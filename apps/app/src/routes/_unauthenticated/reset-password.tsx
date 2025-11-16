@@ -99,7 +99,7 @@ function ResetPasswordPage() {
       // Use better-auth's resetPassword method
       await authClient.resetPassword({
         token: resetToken,
-        password: data.password,
+        newPassword: data.password,
       })
 
       toast.success("Password reset successfully!", {

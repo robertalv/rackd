@@ -146,7 +146,7 @@ export function EnhancedPlayerCard({ player, isOwnProfile = false }: EnhancedPla
           {isOwnProfile ? (
             <>
               <Button variant="outline" className="rounded-full" asChild>
-                <Link to="/players/$id/edit" params={{ id: player._id }}>
+                <Link to="/players/$id" params={{ id: player._id }}>
                   Edit Profile
                 </Link>
               </Button>

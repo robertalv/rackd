@@ -170,7 +170,6 @@ export function PostComposer({
               onClick={handleSubmit}
               disabled={(!content.trim() && uploadedImages.length === 0) || isPosting || isUploading || content.length > 500}
               variant="default"
-              size="sm"
               className="h-8 md:h-auto"
             >
               <Icon icon={SentIcon} className="h-4 w-4 md:h-5 md:w-5" />

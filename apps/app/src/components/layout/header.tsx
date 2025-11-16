@@ -31,12 +31,13 @@ import { ThemeToggle } from "@rackd/ui/components/theme-toggle";
 import { useTheme } from "@/providers/ThemeProvider";
 import { authClient } from "@/lib/auth-client";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { SettingsDialog } from "@rackd/ui/components/settings-dialog";
+import { SettingsDialog } from "@/components/layout/settings-dialog";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { SessionsManager } from "@/components/settings/sessions-manager";
 import { InterestTagsManager } from "@/components/settings/interest-tags-manager";
 import { ConnectedAccounts } from "@/components/settings/connected-accounts";
+import { BillingManager } from "@/components/billing/billing-manager";
 import { useSettingsState } from "@/providers/SettingsProvider";
 
 export function Header() {
@@ -86,7 +87,7 @@ export function Header() {
 
         {/* Center: Logo */}
         <div className="flex items-center justify-center">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" search={{ postId: undefined }} className="flex items-center gap-2">
             <img 
               src="/logo.png" 
               alt="Rackd logo" 
@@ -260,6 +261,7 @@ export function Header() {
         sessionsManager={<SessionsManager />}
         interestsManager={<InterestTagsManager interests={currentUser?.interests || []} maxTags={15} placeholder="e.g., 8-ball, 9-ball, tournaments..." />}
         connectedAccounts={<ConnectedAccounts />}
+        billingManager={<BillingManager />}
         initialTab={initialTab}
       />
     )}

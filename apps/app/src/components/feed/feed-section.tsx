@@ -5,8 +5,13 @@ import { api } from "@rackd/backend/convex/_generated/api";
 import { PostCard } from "@/components/feed/post-card";
 import { Card, CardContent } from "@rackd/ui/components/card";
 import { Icon, Loading03Icon } from "@rackd/ui/icons";
+import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 
-export function FeedSection() {
+interface FeedSectionProps {
+  highlightPostId?: Id<"posts">;
+}
+
+export function FeedSection({ highlightPostId }: FeedSectionProps) {
   const posts = useQuery(api.posts.getFeed, { limit: 50 });
 
   if (posts === undefined) {
@@ -45,7 +50,11 @@ export function FeedSection() {
         {posts.length > 0 && (
           <div className="space-y-4">
             {posts.map((post) => (
-              <PostCard key={post._id} post={post} />
+              <PostCard 
+                key={post._id} 
+                post={post} 
+                highlight={post._id === highlightPostId}
+              />
             ))}
           </div>
         )}

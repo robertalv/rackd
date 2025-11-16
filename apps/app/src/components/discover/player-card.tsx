@@ -44,8 +44,8 @@ export function PlayerCard({ player }: PlayerCardProps) {
 
   return (
     <Link 
-      to="/$username" 
-      params={{ username: player.username || player._id }}
+      to="/players/$id" 
+      params={{ id: player._id }}
       className="block group"
     >
       <Card className="p-5 bg-card border-border hover:border-primary/20 transition-all hover:shadow-md h-full flex flex-col">

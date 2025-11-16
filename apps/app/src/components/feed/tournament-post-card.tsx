@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
@@ -20,10 +20,13 @@ import { Badge } from "@rackd/ui/components/badge";
 
 interface TournamentPostCardProps {
   post: any;
+  highlight?: boolean;
 }
 
-export function TournamentPostCard({ post }: TournamentPostCardProps) {
+export function TournamentPostCard({ post, highlight = false }: TournamentPostCardProps) {
   const [showComments, setShowComments] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const { user: currentUser } = useCurrentUser();
   const isLiked = useQuery(api.posts.isLiked, { postId: post._id });
   const comments = useQuery(api.posts.getComments, { postId: post._id });
@@ -94,8 +97,55 @@ export function TournamentPostCard({ post }: TournamentPostCardProps) {
 
   const gameTypeImage = tournament?.gameType ? getGameTypeImage(tournament.gameType) : null;
 
+  // Handle post highlighting when shared link is clicked
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      setIsHighlighted(true);
+      
+      // Scroll to the post with smooth behavior
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      
+      // Remove highlight after 3 seconds
+      const timer = setTimeout(() => {
+        setIsHighlighted(false);
+      }, 3000);
+      
+      // Clean up URL query parameter
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("postId")) {
+        url.searchParams.delete("postId");
+        window.history.replaceState({}, "", url.toString());
+      }
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlight]);
+
   return (
-    <Card className="mb-4 overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-colors py-0 pb-6">
+    <>
+      {isHighlighted && (
+        <style>{`
+          @keyframes border-pulse {
+            0%, 100% { 
+              opacity: 1;
+            }
+            50% { 
+              opacity: 0.4;
+            }
+          }
+          .pulse-border {
+            animation: border-pulse 1s ease-in-out 3;
+          }
+        `}</style>
+      )}
+      <div ref={cardRef} className="mb-4">
+        <Card 
+          className={`overflow-hidden transition-all duration-300 py-0 pb-6 ${
+            isHighlighted 
+              ? "border-2 ring-2 ring-primary border-primary shadow-lg pulse-border" 
+              : "border-2 border-primary/20 hover:border-primary/40"
+          }`}
+        >
       {/* New Tournament Banner */}
       {isNewTournament && (
         <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 text-center shadow-lg">
@@ -337,7 +387,9 @@ export function TournamentPostCard({ post }: TournamentPostCardProps) {
           </div>
         )}
       </CardContent>
-    </Card>
+        </Card>
+      </div>
+    </>
   );
 }
 

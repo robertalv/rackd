@@ -138,7 +138,10 @@ export function DiscoverTournamentsTable({ searchQuery, filters }: DiscoverTourn
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <Link to={`/tournaments/${tournament._id}`}>
+                      <Link 
+                        to="/tournaments/$id" 
+                        params={{ id: tournament._id }}
+                      >
                         <p className="font-medium hover:text-primary">{tournament.name}</p>
                       </Link>
                       <p className="text-sm text-muted-foreground">
@@ -187,7 +190,10 @@ export function DiscoverTournamentsTable({ searchQuery, filters }: DiscoverTourn
                           Register
                         </Button>
                       )}
-                      <Link to={`/tournaments/${tournament._id}`}>
+                      <Link 
+                        to="/tournaments/$id" 
+                        params={{ id: tournament._id }}
+                      >
                         <Button size="sm" variant="outline">
                           View
                         </Button>

@@ -3,8 +3,8 @@
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@rackd/ui/components/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@rackd/ui/components/tabs";
 import { useIsMobile } from "@rackd/ui/hooks/use-mobile";
-import type { LucideIcon } from "lucide-react";
-import React from "react";
+import { Icon, type IconProps } from "@rackd/ui/icons";
+import React, { useState, useEffect, useCallback } from "react";
 
 export interface PanelConfig {
   /**
@@ -18,7 +18,7 @@ export interface PanelConfig {
   /**
    * Icon for the tab (mobile only)
    */
-  icon?: LucideIcon;
+  icon?: IconProps["icon"];
   /**
    * Default size percentage for desktop (0-100)
    * @default 50
@@ -82,6 +82,16 @@ export interface ResizableLayoutProps {
    * @default false
    */
   disableAutoMobileDetection?: boolean;
+  /**
+   * Storage key for persisting panel sizes in localStorage
+   * If not provided, sizes will not be persisted
+   */
+  storageKey?: string;
+  /**
+   * Optional callback for resize changes
+   * If provided, this will be called instead of directly saving to localStorage
+   */
+  onResizeChange?: (sizes: number[]) => void;
 }
 
 /**
@@ -98,14 +108,67 @@ export function ResizableLayout({
   className = "",
   isMobile: isMobileProp,
   disableAutoMobileDetection = false,
+  storageKey,
+  onResizeChange,
 }: ResizableLayoutProps) {
   const autoDetectedMobile = useIsMobile();
   const isMobile = disableAutoMobileDetection 
     ? (isMobileProp ?? false) 
     : (isMobileProp ?? autoDetectedMobile);
   
-  const leftSize = leftPanel.defaultSize ?? 50;
-  const rightSize = rightPanel.defaultSize ?? (100 - leftSize);
+  // Load saved sizes from localStorage synchronously on initial render
+  const getSavedSizes = (): { left: number; right: number } | null => {
+    if (storageKey && typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Support both direct { left, right } and nested { resize: { left, right } } structures
+          if (parsed.resize && typeof parsed.resize.left === "number" && typeof parsed.resize.right === "number") {
+            return parsed.resize;
+          } else if (typeof parsed.left === "number" && typeof parsed.right === "number") {
+            return { left: parsed.left, right: parsed.right };
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load saved panel sizes:", error);
+      }
+    }
+    return null;
+  };
+  
+  const [savedSizes, setSavedSizes] = useState<{ left: number; right: number } | null>(getSavedSizes);
+  
+  const defaultLeftSize = leftPanel.defaultSize ?? 50;
+  const defaultRightSize = rightPanel.defaultSize ?? (100 - defaultLeftSize);
+  
+  const leftSize = savedSizes?.left ?? defaultLeftSize;
+  const rightSize = savedSizes?.right ?? defaultRightSize;
+  
+  // Save sizes to localStorage when they change
+  const handleLayoutChange = useCallback((sizes: number[]) => {
+    if (sizes.length >= 2) {
+      // If callback is provided, use it instead of direct localStorage access
+      if (onResizeChange) {
+        onResizeChange(sizes);
+        return;
+      }
+      
+      // Otherwise, save directly to localStorage (backward compatibility)
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          const newSizes = {
+            left: sizes[0],
+            right: sizes[1],
+          };
+          localStorage.setItem(storageKey, JSON.stringify(newSizes));
+          setSavedSizes(newSizes);
+        } catch (error) {
+          console.error("Failed to save panel sizes:", error);
+        }
+      }
+    }
+  }, [storageKey, onResizeChange]);
 
   // Mobile layout
   if (isMobile) {
@@ -118,11 +181,11 @@ export function ResizableLayout({
           <Tabs defaultValue={defaultTab} className="h-full">
             <TabsList className="w-full rounded-none">
               <TabsTrigger value="left" className="flex-1">
-                {LeftIcon && <LeftIcon className="mr-2 h-4 w-4" />}
+                {LeftIcon && <Icon icon={LeftIcon} className="mr-2 h-4 w-4" />}
                 {leftPanel.label || "Left"}
               </TabsTrigger>
               <TabsTrigger value="right" className="flex-1">
-                {RightIcon && <RightIcon className="mr-2 h-4 w-4" />}
+                {RightIcon && <Icon icon={RightIcon} className="mr-2 h-4 w-4" />}
                 {rightPanel.label || "Right"}
               </TabsTrigger>
             </TabsList>
@@ -146,7 +209,11 @@ export function ResizableLayout({
   return (
     <div className={`relative isolate flex flex-1 overflow-hidden ${className}`}>
       <div className="size-full">
-        <ResizablePanelGroup direction={direction} className="isolate">
+        <ResizablePanelGroup 
+          direction={direction} 
+          className="isolate"
+          onLayout={handleLayoutChange}
+        >
           <ResizablePanel
             defaultSize={leftSize}
             minSize={leftPanel.minSize ?? 20}

@@ -10,8 +10,10 @@
 
 import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
+import type * as autumn from "../autumn.js";
 import type * as counters from "../counters.js";
 import type * as files from "../files.js";
+import type * as firecrawl from "../firecrawl.js";
 import type * as follows from "../follows.js";
 import type * as http from "../http.js";
 import type * as lib_cloudflare from "../lib/cloudflare.js";
@@ -43,8 +45,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   auth: typeof auth;
+  autumn: typeof autumn;
   counters: typeof counters;
   files: typeof files;
+  firecrawl: typeof firecrawl;
   follows: typeof follows;
   http: typeof http;
   "lib/cloudflare": typeof lib_cloudflare;
@@ -2594,4 +2598,5 @@ export declare const components: {
       >;
     };
   };
+  autumn: {};
 };

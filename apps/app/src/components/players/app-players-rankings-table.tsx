@@ -173,7 +173,7 @@ export function AppPlayersRankingsTable({ players, searchQuery = "" }: AppPlayer
                         image: player.userImageUrl || player.avatarUrl || undefined,
                         country: player.country || undefined,
                       }} 
-                      size="xs" 
+                      size="sm" 
                     />
                     <div>
                       <p className="font-medium">

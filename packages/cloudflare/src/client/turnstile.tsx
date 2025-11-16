@@ -64,6 +64,12 @@ export function useTurnstile(options: TurnstileOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Don't initialize if site key is missing or empty
+    if (!options.siteKey || options.siteKey.trim() === "") {
+      setIsLoading(false);
+      return;
+    }
+
     // Load Turnstile script if not already loaded
     // Check if we're in a browser environment
     if (typeof globalThis === "undefined") return;

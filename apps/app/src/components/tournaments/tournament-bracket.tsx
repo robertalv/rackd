@@ -1,11 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { SingleEliminationBracket, DoubleEliminationBracket } from "@rackd/bracket";
-import type { Match, Participant } from "@rackd/bracket";
+import type { Match, Participant, Theme } from "@rackd/bracket";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { MatchDetailModal } from "./match-detail-modal";
 import { Badge } from "@rackd/ui/components/badge";
+import { formatDistanceToNow } from "date-fns";
+import { Icon, Clock01Icon } from "@rackd/ui/icons";
+import { useTheme } from "@/providers/ThemeProvider";
+import { BracketControls } from "./bracket-controls";
 
 type BackendMatch = {
   _id: Id<"matches">;
@@ -32,18 +36,119 @@ type TournamentBracketProps = {
   matches: BackendMatch[] | undefined;
   tournamentType: "single" | "double" | "round_robin" | "scotch_double" | "teams";
   tournamentId?: string; // Optional: needed to query player count
+  tournamentName?: string; // Optional: tournament name for exports
+  zoom?: number; // Zoom level (0-200)
+  onZoomChange?: (zoom: number) => void; // Callback when zoom changes
 };
 
-export function TournamentBracket({ matches, tournamentType, tournamentId }: TournamentBracketProps) {
+// Helper function to get placement label (e.g., "9-12TH", "5-6TH", "3RD")
+const getPlacementLabel = (round: number, totalRounds: number, bracketSize: number): string | null => {
+  if (round === totalRounds) return null; // Final round
+  if (round === totalRounds - 1) return "3RD"; // Third place match
+  
+  // Calculate placement range based on round
+  const playersEliminated = bracketSize / Math.pow(2, round);
+  const startPlace = playersEliminated + 1;
+  const endPlace = playersEliminated * 2;
+  
+  if (startPlace === endPlace) {
+    const suffix = startPlace === 1 ? "ST" : startPlace === 2 ? "ND" : startPlace === 3 ? "RD" : "TH";
+    return `${startPlace}${suffix}`;
+  }
+  
+  const endSuffix = endPlace === 1 ? "ST" : endPlace === 2 ? "ND" : endPlace === 3 ? "RD" : "TH";
+  return `${startPlace}-${endPlace}${endSuffix}`;
+};
+
+// Helper to get CSS variable value
+const getCSSVariable = (varName: string): string => {
+  if (typeof window === "undefined") return "";
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(varName)
+    .trim();
+};
+
+// Helper to create theme-aware bracket theme using CSS variables
+const createBracketTheme = (isDark: boolean): Theme => {
+  // Get CSS variable values
+  const background = getCSSVariable("--background");
+  const card = getCSSVariable("--card");
+  const foreground = getCSSVariable("--foreground");
+  const mutedForeground = getCSSVariable("--muted-foreground");
+  const border = getCSSVariable("--border");
+  const primary = getCSSVariable("--primary");
+  const destructive = getCSSVariable("--destructive");
+  
+  // For dark mode, use slightly darker variants for match backgrounds
+  const matchWonBg = isDark 
+    ? getCSSVariable("--card") || "oklch(0.2686 0 0)"
+    : getCSSVariable("--muted") || "oklch(0.9846 0.0017 247.8389)";
+  const matchLostBg = isDark
+    ? "oklch(0.1418 0 0)" // Slightly darker than card
+    : getCSSVariable("--muted") || "oklch(0.9846 0.0017 247.8389)";
+  
+  return {
+    fontFamily: getCSSVariable("--font-sans") || '"Inter", "Roboto", "Arial", "Helvetica", "sans-serif"',
+    transitionTimingFunction: 'cubic-bezier(0, 0.92, 0.77, 0.99)',
+    disabledColor: mutedForeground || (isDark ? "oklch(0.7155 0 0)" : "oklch(0.5510 0.0234 264.3637)"),
+    canvasBackground: background || (isDark ? "oklch(0.2046 0 0)" : "oklch(1.0000 0 0)"),
+    roundHeaders: {
+      background: card || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)"),
+    },
+    matchBackground: {
+      wonColor: matchWonBg,
+      lostColor: matchLostBg,
+    },
+    border: {
+      color: border || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)"),
+      highlightedColor: primary || "oklch(0.5000 0.1340 242.7490)",
+    },
+    textColor: {
+      highlighted: foreground || (isDark ? "oklch(0.9219 0 0)" : "oklch(0.3211 0 0)"),
+      main: foreground || (isDark ? "oklch(0.9219 0 0)" : "oklch(0.3211 0 0)"),
+      dark: mutedForeground || (isDark ? "oklch(0.7155 0 0)" : "oklch(0.5510 0.0234 264.3637)"),
+      disabled: mutedForeground || (isDark ? "oklch(0.7155 0 0)" : "oklch(0.5510 0.0234 264.3637)"),
+    },
+    score: {
+      text: {
+        highlightedWonColor: primary || "oklch(0.5000 0.1340 242.7490)",
+        highlightedLostColor: destructive || "oklch(0.6368 0.2078 25.3313)",
+      },
+      background: {
+        wonColor: matchWonBg,
+        lostColor: matchLostBg,
+      },
+    },
+  };
+};
+
+export function TournamentBracket({ matches, tournamentType, tournamentId, tournamentName, zoom, onZoomChange }: TournamentBracketProps) {
   // State to track selected match
   const [selectedMatchId, setSelectedMatchId] = useState<string | number | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  
+  // Ref for bracket container (for controls)
+  const bracketContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  
+  // Get theme for dynamic styling
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const bracketTheme = useMemo(() => createBracketTheme(isDark), [isDark]);
   
   // Get checked-in players count to calculate bracket size
   const playerCount = useQuery(
     api.tournaments.getPlayerCount,
     tournamentId ? { tournamentId: tournamentId as Id<"tournaments"> } : "skip"
   );
+  
+  // Get tournament data for name if not provided
+  const tournament = useQuery(
+    api.tournaments.getById,
+    tournamentId && !tournamentName ? { id: tournamentId as Id<"tournaments"> } : "skip"
+  );
+  
+  const displayName = tournamentName || tournament?.name || "Tournament Bracket";
   
   // Find the selected match from backend matches
   const selectedMatch = useMemo(() => {
@@ -381,6 +486,97 @@ export function TournamentBracket({ matches, tournamentType, tournamentId }: Tou
     return null;
   }, [matches, tournamentType, playerCount]);
 
+  // Calculate container width for full-width background
+  useEffect(() => {
+    if (!bracketContainerRef.current || !bracketData) return;
+    
+    const updateWidth = () => {
+      if (bracketContainerRef.current) {
+        // Find the bracket content element that has the transform applied
+        const bracketContent = bracketContainerRef.current.querySelector('[data-bracket-content]') as HTMLElement;
+        
+        if (bracketContent) {
+          // Get the actual scrollable width of the bracket content
+          // This is the width before any CSS transforms are applied
+          const contentScrollWidth = bracketContent.scrollWidth;
+          
+          // Get container dimensions
+          const containerScrollWidth = bracketContainerRef.current.scrollWidth;
+          const containerClientWidth = bracketContainerRef.current.clientWidth;
+          
+          // The header should span the full width of the scrollable content
+          // Use the bracket content's scrollWidth as it represents the full bracket width
+          // This ensures the header spans correctly even when zoomed
+          setContainerWidth(Math.max(contentScrollWidth, containerScrollWidth, containerClientWidth));
+        } else {
+          // Fallback to container width if bracket content not found
+          const scrollWidth = bracketContainerRef.current.scrollWidth;
+          const clientWidth = bracketContainerRef.current.clientWidth;
+          setContainerWidth(Math.max(scrollWidth, clientWidth));
+        }
+      }
+    };
+    
+    // Delay to ensure DOM is fully rendered, use requestAnimationFrame for better timing
+    const timeoutId = setTimeout(() => {
+      requestAnimationFrame(updateWidth);
+    }, 0);
+    
+    const resizeObserver = new ResizeObserver(() => {
+      // Use requestAnimationFrame to ensure measurements are accurate after resize
+      requestAnimationFrame(updateWidth);
+    });
+    if (bracketContainerRef.current) {
+      resizeObserver.observe(bracketContainerRef.current);
+      // Also observe the bracket content element if it exists
+      const bracketContent = bracketContainerRef.current.querySelector('[data-bracket-content]') as HTMLElement;
+      if (bracketContent) {
+        resizeObserver.observe(bracketContent);
+      }
+    }
+    
+    // Also listen for transition end to update after zoom animation
+    const handleTransitionEnd = (e: TransitionEvent) => {
+      if (e.propertyName === 'transform') {
+        // Use requestAnimationFrame to ensure accurate measurements after transform
+        requestAnimationFrame(updateWidth);
+      }
+    };
+    
+    const bracketContentForTransition = bracketContainerRef.current?.querySelector('[data-bracket-content]') as HTMLElement;
+    if (bracketContentForTransition) {
+      bracketContentForTransition.addEventListener('transitionend', handleTransitionEnd);
+    }
+    
+    // Also listen for any style changes that might affect width (like transform changes)
+    const mutationObserver = new MutationObserver(() => {
+      requestAnimationFrame(updateWidth);
+    });
+    
+    if (bracketContentForTransition) {
+      mutationObserver.observe(bracketContentForTransition, {
+        attributes: true,
+        attributeFilter: ['style'],
+      });
+    }
+    
+    const handleResize = () => {
+      requestAnimationFrame(updateWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
+      if (bracketContentForTransition) {
+        bracketContentForTransition.removeEventListener('transitionend', handleTransitionEnd);
+      }
+    };
+  }, [bracketData]);
+
   if (!bracketData) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -389,33 +585,118 @@ export function TournamentBracket({ matches, tournamentType, tournamentId }: Tou
     );
   }
 
+  // Calculate bracket size for placement labels
+  const bracketSize = useMemo(() => {
+    if (!matches || matches.length === 0) return 16;
+    const playersInMatches = new Set(
+      matches.flatMap(m => [m.player1Id, m.player2Id].filter(Boolean))
+    );
+    const numPlayers = playerCount?.checkedIn || playersInMatches.size || 0;
+    return Math.max(16, Math.pow(2, Math.ceil(Math.log2(Math.max(numPlayers, 2)))));
+  }, [matches, playerCount]);
+
+
   if (bracketData.type === "single") {
+    // Calculate header height for positioning the background overlay
+    const headerHeight = 50; // Match the roundHeader.height
+    const headerBackgroundColor = getCSSVariable("--muted") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)");
+    const headerBorderColor = getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)");
+    
     return (
       <>
-        <div className="h-full overflow-auto">
-          <SingleEliminationBracket
+        <div ref={bracketContainerRef} className="h-full overflow-auto bg-background relative">
+          <div data-bracket-content className="inline-block min-w-full relative">
+            {/* Full-width header background overlay - spans entire container width */}
+            {containerWidth && (
+              <div
+                className={`absolute top-0 left-0 z-10 pointer-events-none w-full`}
+                style={{
+                  width: `${containerWidth}px`,
+                  height: `${headerHeight}px`,
+                  backgroundColor: headerBackgroundColor,
+                  borderBottom: `1px solid ${headerBorderColor}`,
+                }}
+              />
+            )}
+            <div className="relative z-20">
+              <SingleEliminationBracket
             matches={bracketData.matches}
             onMatchClick={handleMatchClick}
+            theme={bracketTheme}
+            options={{
+              style: {
+                roundHeader: {
+                  isShown: true,
+                  height: 50,
+                  marginBottom: 25,
+                  fontSize: 10,
+                  fontColor: getCSSVariable("--muted-foreground") || (isDark ? "oklch(0.7155 0 0)" : "oklch(0.5510 0.0234 264.3637)"),
+                  backgroundColor: getCSSVariable("--card") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)"),
+                  fontFamily: getCSSVariable("--font-sans") || '"Inter", "Roboto", "Arial", "Helvetica", "sans-serif"',
+                  // roundTextGenerator: (currentRound, roundsTotal) => {
+                  //   const roundNum = currentRound;
+                  //   const placement = getPlacementLabel(roundNum, roundsTotal, bracketSize);
+                  //   const bracketType = tournamentType === "double" ? "WB" : "";
+                  //   if (placement) {
+                  //     return `${bracketType} ROUND ${roundNum} (${placement})`;
+                  //   }
+                  //   return `${bracketType} ROUND ${roundNum}`;
+                  // },
+                },
+                connectorColor: getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)"),
+                connectorColorHighlight: getCSSVariable("--primary") || "oklch(0.5000 0.1340 242.7490)",
+                width: 240,
+                boxHeight: 180,
+                spaceBetweenColumns: 60,
+                spaceBetweenRows: 20,
+              },
+            }}
             matchComponent={({ match, topParty, bottomParty, topWon, bottomWon, onMatchClick, onMouseEnter, onMouseLeave, topHovered, bottomHovered }) => {
               const isSelected = selectedMatchId === match.id;
               // Find the backend match to check status
               const backendMatch = matches?.find(m => m._id === match.id);
               const isLive = backendMatch?.status === "in_progress";
+              const isCompleted = backendMatch?.status === "completed";
               const isHovered = topHovered || bottomHovered;
+              
+              // Format timestamp
+              const formatTimestamp = (timestamp: number | null | undefined) => {
+                if (!timestamp) return null;
+                try {
+                  return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+                } catch {
+                  return null;
+                }
+              };
+              
+              const timestamp = backendMatch?.completedAt 
+                ? formatTimestamp(backendMatch.completedAt)
+                : null;
+              
+              // Get loser match label - find the match number from bracket position
+              const loserMatchLabel = backendMatch?.nextLooserMatchId
+                ? (() => {
+                    const loserMatch = matches?.find(m => m._id === backendMatch.nextLooserMatchId);
+                    if (loserMatch) {
+                      return `L to ${loserMatch.bracketPosition + 1}`;
+                    }
+                    return null;
+                  })()
+                : null;
               
               return (
                 <div 
                   className={`
-                    border rounded p-2 min-w-[200px] cursor-pointer transition-all relative
-                    ${isSelected ? "bg-primary/5" : ""}
-                    ${isHovered ? "bg-primary/5 border border-primary/10" : "hover:bg-muted/50"}
+                    border border-border rounded-lg p-3 min-w-[240px] cursor-pointer transition-all relative
+                    bg-card hover:bg-muted hover:border-primary/30
+                    ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted" : ""}
+                    ${isHovered ? "bg-muted border-primary/50 shadow-lg shadow-primary/10" : ""}
                   `}
                   onClick={(e) => {
                     e.preventDefault();
                     onMatchClick?.({ match, topWon, bottomWon, event: e as any });
                   }}
                   onMouseEnter={() => {
-                    // Highlight match when hovering over either participant
                     if (topParty.id) onMouseEnter?.(topParty.id);
                   }}
                   onMouseLeave={onMouseLeave}
@@ -423,52 +704,95 @@ export function TournamentBracket({ matches, tournamentType, tournamentId }: Tou
                   {isLive && (
                     <Badge 
                       variant="destructive" 
-                      className="absolute top-1 right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 font-semibold"
+                      className="absolute top-2 right-2 bg-red-500 text-white text-[10px] px-2 py-0.5 font-semibold rounded"
                     >
                       LIVE
                     </Badge>
                   )}
-                  <div className={`text-xs mb-1 transition-colors ${isHovered ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                  {isCompleted && !isLive && (
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute top-2 right-2 bg-muted text-muted-foreground text-[10px] px-2 py-0.5 font-semibold rounded"
+                    >
+                      COMPLETED
+                    </Badge>
+                  )}
+                  
+                  <div className={`text-xs mb-2 font-medium transition-colors ${isHovered ? "text-primary" : "text-muted-foreground"}`}>
                     {match.name}
                   </div>
-                  <div className="space-y-1">
+                  
+                  <div className="space-y-1.5">
                     <div 
-                      className={`flex justify-between items-center px-2 py-1 rounded transition-colors ${
-                        topWon ? "bg-green-100 dark:bg-green-900" : ""
-                      } ${isSelected ? "bg-primary/10" : ""} ${topHovered ? "bg-primary/30" : isHovered ? "" : ""}`}
+                      className={`
+                        flex justify-between items-center px-3 py-2 rounded-md transition-all
+                        ${topWon ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" : "bg-muted/50"}
+                        ${isSelected ? "bg-muted" : ""}
+                        ${topHovered ? "bg-muted border border-primary/50" : ""}
+                      `}
                       onMouseEnter={() => onMouseEnter?.(topParty.id)}
                       onMouseLeave={onMouseLeave}
                     >
-                      <span className={`text-sm transition-colors ${topHovered ? "font-semibold" : ""}`}>
+                      <span className={`text-sm font-medium transition-colors ${
+                        topHovered ? "text-primary font-semibold" : topWon ? "text-primary" : "text-foreground"
+                      }`}>
                         {topParty.name || "TBD"}
                       </span>
                       {topParty.resultText && (
-                        <span className={`text-sm font-semibold`}>
+                        <span className={`text-sm font-bold ${
+                          topWon ? "text-primary" : "text-muted-foreground"
+                        }`}>
                           {topParty.resultText}
                         </span>
                       )}
                     </div>
                     <div 
-                      className={`flex justify-between items-center px-2 py-1 rounded transition-colors ${
-                        bottomWon ? "bg-green-100 dark:bg-green-900" : ""
-                      } ${isSelected ? "bg-primary/10" : ""} ${bottomHovered ? "bg-primary/30" : isHovered ? "" : ""}`}
+                      className={`
+                        flex justify-between items-center px-3 py-2 rounded-md transition-all
+                        ${bottomWon ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" : "bg-muted/50"}
+                        ${isSelected ? "bg-muted" : ""}
+                        ${bottomHovered ? "bg-muted border border-primary/50" : ""}
+                      `}
                       onMouseEnter={() => onMouseEnter?.(bottomParty.id)}
                       onMouseLeave={onMouseLeave}
                     >
-                      <span className={`text-sm transition-colors ${bottomHovered ? "font-semibold" : ""}`}>
+                      <span className={`text-sm font-medium transition-colors ${
+                        bottomHovered ? "text-primary font-semibold" : bottomWon ? "text-primary" : "text-foreground"
+                      }`}>
                         {bottomParty.name || "TBD"}
                       </span>
                       {bottomParty.resultText && (
-                        <span className={`text-sm font-semibold ${bottomHovered ? "text-primary" : ""}`}>
+                        <span className={`text-sm font-bold ${
+                          bottomWon ? "text-primary" : "text-muted-foreground"
+                        }`}>
                           {bottomParty.resultText}
                         </span>
                       )}
                     </div>
                   </div>
+                  
+                  {(timestamp || loserMatchLabel) && (
+                    <div className="mt-2 pt-2 border-t border-border space-y-1">
+                      {timestamp && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Icon icon={Clock01Icon} className="h-3 w-3" />
+                          <span>{timestamp}</span>
+                        </div>
+                      )}
+                      {loserMatchLabel && (
+                        <div className="text-[10px] text-muted-foreground font-medium">
+                          {loserMatchLabel}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             }}
           />
+            </div>
+          </div>
+          <BracketControls bracketContainerRef={bracketContainerRef} tournamentName={displayName} zoom={zoom} onZoomChange={onZoomChange} />
         </div>
         {tournamentId && (
           <MatchDetailModal
@@ -483,32 +807,106 @@ export function TournamentBracket({ matches, tournamentType, tournamentId }: Tou
   }
 
   if (bracketData.type === "double") {
+    // Calculate header height for positioning the background overlay
+    const headerHeight = 50; // Match the roundHeader.height
+    const headerBackgroundColor = getCSSVariable("--card") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)");
+    const headerBorderColor = getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)");
+    
     return (
       <>
-        <div className="h-full overflow-auto p-6">
-          <DoubleEliminationBracket
+        <div ref={bracketContainerRef} className="h-full overflow-auto bg-background dark:bg-[#0A0E1A] p-6 relative">
+          <div data-bracket-content className="inline-block min-w-full relative">
+            {/* Full-width header background overlay - spans entire container width */}
+            {containerWidth && (
+              <div
+                className="absolute top-0 left-0 z-10 pointer-events-none"
+                style={{
+                  top: '24px', // Account for p-6 padding (1.5rem = 24px)
+                  width: `${containerWidth}px`,
+                  height: `${headerHeight}px`,
+                  backgroundColor: headerBackgroundColor,
+                  borderBottom: `1px solid ${headerBorderColor}`,
+                }}
+              />
+            )}
+            <div className="relative z-20">
+              <DoubleEliminationBracket
             matches={bracketData.matches}
             onMatchClick={handleMatchClick}
+            theme={bracketTheme}
+            options={{
+              style: {
+                roundHeader: {
+                  isShown: true,
+                  height: 50,
+                  marginBottom: 25,
+                  fontSize: 14,
+                  fontColor: getCSSVariable("--foreground") || (isDark ? "oklch(0.9219 0 0)" : "oklch(0.3211 0 0)"),
+                  backgroundColor: getCSSVariable("--card") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)"),
+                  fontFamily: getCSSVariable("--font-sans") || '"Inter", "Roboto", "Arial", "Helvetica", "sans-serif"',
+                  roundTextGenerator: (currentRound, roundsTotal) => {
+                    const roundNum = currentRound;
+                    const placement = getPlacementLabel(roundNum, roundsTotal, bracketSize);
+                    if (placement) {
+                      return `WB ROUND ${roundNum} (${placement})`;
+                    }
+                    return `WB ROUND ${roundNum}`;
+                  },
+                },
+                connectorColor: getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)"),
+                connectorColorHighlight: getCSSVariable("--primary") || "oklch(0.5000 0.1340 242.7490)",
+                width: 240,
+                boxHeight: 120,
+                spaceBetweenColumns: 60,
+                spaceBetweenRows: 20,
+              },
+            }}
             matchComponent={({ match, topParty, bottomParty, topWon, bottomWon, onMatchClick, onMouseEnter, onMouseLeave, topHovered, bottomHovered }) => {
               const isSelected = selectedMatchId === match.id;
               // Find the backend match to check status
               const backendMatch = matches?.find(m => m._id === match.id);
               const isLive = backendMatch?.status === "in_progress";
+              const isCompleted = backendMatch?.status === "completed";
               const isHovered = topHovered || bottomHovered;
+              
+              // Format timestamp
+              const formatTimestamp = (timestamp: number | null | undefined) => {
+                if (!timestamp) return null;
+                try {
+                  return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+                } catch {
+                  return null;
+                }
+              };
+              
+              const timestamp = backendMatch?.completedAt 
+                ? formatTimestamp(backendMatch.completedAt)
+                : null;
+              
+              // Get loser match label
+              const loserMatchLabel = backendMatch?.nextLooserMatchId
+                ? (() => {
+                    const loserMatch = matches?.find(m => m._id === backendMatch.nextLooserMatchId);
+                    if (loserMatch) {
+                      return `L to ${loserMatch.bracketPosition + 1}`;
+                    }
+                    return null;
+                  })()
+                : null;
               
               return (
                 <div 
                   className={`
-                    border rounded p-2 min-w-[200px] cursor-pointer transition-all relative
-                    ${isSelected ? "ring-2 ring-primary ring-offset-2 bg-primary/5" : ""}
-                    ${isHovered ? "ring-2 ring-primary/70 bg-primary/10 border-primary/50 shadow-md" : "hover:bg-muted/50"}
+                    border border-border rounded-lg p-3 min-w-[240px] cursor-pointer transition-all relative
+                    bg-card hover:bg-muted hover:border-primary/30
+                    ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted" : ""}
+                    ${isHovered ? "bg-muted border-primary/50 shadow-lg shadow-primary/10" : ""}
                   `}
                   onClick={(e) => {
                     e.preventDefault();
                     onMatchClick?.({ match, topWon, bottomWon, event: e as any });
                   }}
                   onMouseEnter={() => {
-                    // Highlight match when hovering over either participant
                     if (topParty.id) onMouseEnter?.(topParty.id);
                   }}
                   onMouseLeave={onMouseLeave}
@@ -516,52 +914,95 @@ export function TournamentBracket({ matches, tournamentType, tournamentId }: Tou
                   {isLive && (
                     <Badge 
                       variant="destructive" 
-                      className="absolute top-1 right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 font-semibold"
+                      className="absolute top-2 right-2 bg-red-500 text-white text-[10px] px-2 py-0.5 font-semibold rounded"
                     >
                       LIVE
                     </Badge>
                   )}
-                  <div className={`text-xs mb-1 transition-colors ${isHovered ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                  {isCompleted && !isLive && (
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute top-2 right-2 bg-muted text-muted-foreground text-[10px] px-2 py-0.5 font-semibold rounded"
+                    >
+                      COMPLETED
+                    </Badge>
+                  )}
+                  
+                  <div className={`text-xs mb-2 font-medium transition-colors ${isHovered ? "text-primary" : "text-muted-foreground"}`}>
                     {match.name}
                   </div>
-                  <div className="space-y-1">
+                  
+                  <div className="space-y-1.5">
                     <div 
-                      className={`flex justify-between items-center px-2 py-1 rounded transition-colors ${
-                        topWon ? "bg-green-100 dark:bg-green-900" : ""
-                      } ${isSelected ? "bg-primary/10" : ""} ${topHovered ? "bg-primary/30 border border-primary/70" : isHovered ? "bg-primary/15" : ""}`}
+                      className={`
+                        flex justify-between items-center px-3 py-2 rounded-md transition-all
+                        ${topWon ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" : "bg-muted/50"}
+                        ${isSelected ? "bg-muted" : ""}
+                        ${topHovered ? "bg-muted border border-primary/50" : ""}
+                      `}
                       onMouseEnter={() => onMouseEnter?.(topParty.id)}
                       onMouseLeave={onMouseLeave}
                     >
-                      <span className={`text-sm transition-colors ${topHovered ? "font-semibold text-primary" : ""}`}>
+                      <span className={`text-sm font-medium transition-colors ${
+                        topHovered ? "text-primary font-semibold" : topWon ? "text-primary" : "text-foreground"
+                      }`}>
                         {topParty.name || "TBD"}
                       </span>
                       {topParty.resultText && (
-                        <span className={`text-sm font-semibold ${topHovered ? "text-primary" : ""}`}>
+                        <span className={`text-sm font-bold ${
+                          topWon ? "text-primary" : "text-muted-foreground"
+                        }`}>
                           {topParty.resultText}
                         </span>
                       )}
                     </div>
                     <div 
-                      className={`flex justify-between items-center px-2 py-1 rounded transition-colors ${
-                        bottomWon ? "bg-green-100 dark:bg-green-900" : ""
-                      } ${isSelected ? "bg-primary/10" : ""} ${bottomHovered ? "bg-primary/30 border border-primary/70" : isHovered ? "bg-primary/15" : ""}`}
+                      className={`
+                        flex justify-between items-center px-3 py-2 rounded-md transition-all
+                        ${bottomWon ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" : "bg-muted/50"}
+                        ${isSelected ? "bg-muted" : ""}
+                        ${bottomHovered ? "bg-muted border border-primary/50" : ""}
+                      `}
                       onMouseEnter={() => onMouseEnter?.(bottomParty.id)}
                       onMouseLeave={onMouseLeave}
                     >
-                      <span className={`text-sm transition-colors ${bottomHovered ? "font-semibold text-primary" : ""}`}>
+                      <span className={`text-sm font-medium transition-colors ${
+                        bottomHovered ? "text-primary font-semibold" : bottomWon ? "text-primary" : "text-foreground"
+                      }`}>
                         {bottomParty.name || "TBD"}
                       </span>
                       {bottomParty.resultText && (
-                        <span className={`text-sm font-semibold ${bottomHovered ? "text-primary" : ""}`}>
+                        <span className={`text-sm font-bold ${
+                          bottomWon ? "text-primary" : "text-muted-foreground"
+                        }`}>
                           {bottomParty.resultText}
                         </span>
                       )}
                     </div>
                   </div>
+                  
+                  {(timestamp || loserMatchLabel) && (
+                    <div className="mt-2 pt-2 border-t border-border space-y-1">
+                      {timestamp && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Icon icon={Clock01Icon} className="h-3 w-3" />
+                          <span>{timestamp}</span>
+                        </div>
+                      )}
+                      {loserMatchLabel && (
+                        <div className="text-[10px] text-muted-foreground font-medium">
+                          {loserMatchLabel}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             }}
           />
+            </div>
+          </div>
+          <BracketControls bracketContainerRef={bracketContainerRef} tournamentName={displayName} zoom={zoom} onZoomChange={onZoomChange} />
         </div>
         {tournamentId && (
           <MatchDetailModal

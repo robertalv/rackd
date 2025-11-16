@@ -6,7 +6,10 @@ import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { Button } from "@rackd/ui/components/button";
 import { Input } from "@rackd/ui/components/input";
-import { Search, Star, UserPlus } from "lucide-react";
+import { Card, CardContent } from "@rackd/ui/components/card";
+import { Badge } from "@rackd/ui/components/badge";
+import { ScrollArea } from "@rackd/ui/components/scroll-area";
+import { Icon, Search01Icon, FavouriteIcon, Add01Icon } from "@rackd/ui/icons";
 import { useNavigate } from "@tanstack/react-router";
 
 interface TablesPlayersViewProps {
@@ -55,37 +58,42 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 	}) || [];
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex flex-col h-full min-h-0">
 			{/* Players Content */}
-			<div className="flex-1 overflow-auto flex flex-col">
+			<div className="flex flex-col flex-1 min-h-0">
 				{/* Search Bar */}
-				<div className="px-4 py-3 border-b">
-					<div className="flex items-center gap-2">
+				<div className="px-4 py-3 border-b bg-background/50 flex-shrink-0">
+					<div className="relative">
+						<Icon icon={Search01Icon} className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 						<Input
 							placeholder="Search by player name"
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className="flex-1"
+							className="pl-10"
 						/>
-						<Button size="icon" variant="outline">
-							<Search className="h-4 w-4" />
-						</Button>
 					</div>
 				</div>
 
 				{/* Player Statistics */}
-				<div className="px-4 py-3 border-b">
+				<div className="px-4 py-2 border-b bg-muted/30 flex-shrink-0">
 					<div className="flex items-center gap-4 text-sm">
-						<span>Total players: {totalPlayers}</span>
-						<span>Players left: {checkedInPlayers}</span>
-						<span>Eliminated: {eliminatedPlayers}</span>
+						<Badge variant="secondary" className="text-xs">
+							Total: {totalPlayers}
+						</Badge>
+						<Badge variant="secondary" className="text-xs">
+							Checked In: {checkedInPlayers}
+						</Badge>
+						<Badge variant="secondary" className="text-xs">
+							Eliminated: {eliminatedPlayers}
+						</Badge>
 					</div>
 				</div>
 
-				{/* Players List */}
-				<div className="flex-1 overflow-auto px-4 py-4">
+				{/* Players List - Scrollable */}
+				<ScrollArea className="flex-1 min-h-0">
+					<div className="p-4 space-y-2">
 					{filteredPlayers.length > 0 ? (
-						<div className="space-y-0">
+						<div className="space-y-2">
 							{filteredPlayers.map((registration) => {
 								const playerName = registration.player?.name || registration.user?.name || "Unknown";
 								const playerCountry = registration.player?.city || registration.user?.country;
@@ -109,48 +117,74 @@ export function TablesPlayersView({ tournamentId, onManagePlayers }: TablesPlaye
 									bracketExists && 
 									!isPlayerInBracket(registration.player?._id);
 
+								const isInBracket = registration.player?._id && isPlayerInBracket(registration.player._id);
+
 								return (
-									<div
+									<Card 
 										key={registration._id}
-										className="flex items-center justify-between py-3 border-b last:border-b-0"
+										className="bg-accent/50 hover:bg-accent/70 transition-colors"
 									>
-										<div className="flex items-center gap-3 flex-1 min-w-0">
-											<span className="text-gray-400">-</span>
-											<span className="flex-1 truncate">{playerName}</span>
-											{flagEmoji && (
-												<span className="text-lg shrink-0">{flagEmoji}</span>
-											)}
-										</div>
-										<div className="flex items-center gap-2 shrink-0">
-											{canAddToBracket && (
-												<Button 
-													variant="secondary" 
-													size="sm"
-													onClick={() => registration.player?._id && handleAddToBracket(registration.player._id)}
-													title="Add player to bracket"
-												>
-													<UserPlus className="h-4 w-4" />
-												</Button>
-											)}
-											<Button variant="outline" size="sm">
-												<Star className="h-4 w-4" />
-											</Button>
-										</div>
-									</div>
+										<CardContent>
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2 flex-1 min-w-0">
+													<div className="flex items-center gap-2 flex-1 min-w-0">
+														<span className="font-medium text-sm truncate">{playerName}</span>
+														{flagEmoji && (
+															<span className="text-base shrink-0">{flagEmoji}</span>
+														)}
+													</div>
+													{registration.checkedIn && (
+														<Badge variant="default" className="text-xs shrink-0 px-1.5 py-0.5">
+															Checked In
+														</Badge>
+													)}
+													{isInBracket && (
+														<Badge variant="secondary" className="text-xs shrink-0 px-1.5 py-0.5">
+															In Bracket
+														</Badge>
+													)}
+												</div>
+												<div className="flex items-center gap-1 shrink-0">
+													{canAddToBracket && (
+														<Button 
+															variant="secondary" 
+															size="sm"
+															onClick={() => registration.player?._id && handleAddToBracket(registration.player._id)}
+															title="Add player to bracket"
+															className="h-7 w-7 p-0"
+														>
+															<Icon icon={Add01Icon} className="h-3.5 w-3.5" />
+														</Button>
+													)}
+													<Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+														<Icon icon={FavouriteIcon} className="h-3.5 w-3.5" />
+													</Button>
+												</div>
+											</div>
+										</CardContent>
+									</Card>
 								);
 							})}
 						</div>
 					) : (
-						<div className="text-center text-gray-400 py-8">
-							No players found
-						</div>
+						<Card className="bg-accent/50">
+							<CardContent className="p-8">
+								<div className="text-center text-muted-foreground">
+									<p className="text-sm">No players found</p>
+									{searchQuery && (
+										<p className="text-xs mt-1">Try adjusting your search</p>
+									)}
+								</div>
+							</CardContent>
+						</Card>
 					)}
-				</div>
+					</div>
+				</ScrollArea>
 
 				{/* Manage Players Button */}
-				<div className="px-4 py-4 border-t">
+				<div className="px-4 py-3 border-t bg-background/50 flex-shrink-0">
 					<Button
-						variant="outline"
+						variant="default"
 						className="w-full"
 						onClick={() => {
 							if (onManagePlayers) {

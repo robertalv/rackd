@@ -473,7 +473,7 @@ export const getCurrentUserWithUsersTable = query({
 	args: {},
 	returns: v.any(),
 	handler: async function (ctx) {
-		const betterAuthUser = await authClient.getAuthUser(ctx);
+		const betterAuthUser = await authClient.safeGetAuthUser(ctx);
 
 		if (!betterAuthUser) {
 			return null;

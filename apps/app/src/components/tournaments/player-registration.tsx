@@ -7,6 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@rackd/ui/components/avatar";
 import { Badge } from "@rackd/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@rackd/ui/components/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rackd/ui/components/select";
+import { Label } from "@rackd/ui/components/label";
 import { useState } from "react";
 import { Search, UserPlus, CheckCircle, Clock, Plus, Trash2, Loader2, DollarSign } from "lucide-react";
 import type { PlayerSearchResult } from "@rackd/types";
@@ -23,6 +26,11 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const [fargoResults, setFargoResults] = useState<PlayerSearchResult[]>([]);
   const [isSearchingFargo, setIsSearchingFargo] = useState(false);
   const [fargoSearchTerm, setFargoSearchTerm] = useState("");
+  const [isCreatePlayerDialogOpen, setIsCreatePlayerDialogOpen] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [newPlayerFargoRating, setNewPlayerFargoRating] = useState("");
+  const [newPlayerLeague, setNewPlayerLeague] = useState<"APA" | "BCA" | "NAPA" | "OTHER" | "">("");
+  const [newPlayerCity, setNewPlayerCity] = useState("");
   
   const tournament = useQuery(api.tournaments.getById, { id: tournamentId });
   const tournamentRegistrations = useQuery(api.tournaments.getRegistrations, { tournamentId });
@@ -42,6 +50,7 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const updatePaymentStatus = useMutation(api.tournaments.updatePaymentStatus);
   const getOrCreateFromFargoRate = useMutation(api.players.getOrCreateFromFargoRate);
   const addLatePlayerToBracket = useMutation(api.matches.addLatePlayerToBracket);
+  const createPlayer = useMutation(api.players.create);
   
   // Check if bracket exists and which players are already in it
   const matches = useQuery(api.matches.getByTournament, { tournamentId });
@@ -168,6 +177,40 @@ export function PlayerRegistration({ tournamentId }: Props) {
         alert("This player is already registered for this tournament.");
       } else {
         alert(`Failed to add player: ${error?.message || "Unknown error"}`);
+      }
+    }
+  };
+
+  const handleCreateAndAddPlayer = async () => {
+    if (!newPlayerName.trim()) {
+      alert("Please enter a player name.");
+      return;
+    }
+
+    try {
+      // Create the player
+      const playerId = await createPlayer({
+        name: newPlayerName.trim(),
+        fargoRating: newPlayerFargoRating ? parseFloat(newPlayerFargoRating) : undefined,
+        league: newPlayerLeague || undefined,
+        city: newPlayerCity.trim() || undefined,
+      });
+
+      // Add them to the tournament
+      await addPlayer({ tournamentId, playerId });
+
+      // Reset form and close dialog
+      setNewPlayerName("");
+      setNewPlayerFargoRating("");
+      setNewPlayerLeague("");
+      setNewPlayerCity("");
+      setIsCreatePlayerDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error creating and adding player:", error);
+      if (error?.message?.includes("already registered")) {
+        alert("This player is already registered for this tournament.");
+      } else {
+        alert(`Failed to create and add player: ${error?.message || "Unknown error"}`);
       }
     }
   };
@@ -563,18 +606,108 @@ export function PlayerRegistration({ tournamentId }: Props) {
                   </TableBody>
                 </Table>
               ) : fargoSearchTerm && !isSearchingFargo ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No FargoRate players found for "{fargoSearchTerm}".
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">
+                    No FargoRate players found for "{fargoSearchTerm}".
+                  </p>
+                  <Button
+                    onClick={() => setIsCreatePlayerDialogOpen(true)}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Player Manually
+                  </Button>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Search the FargoRate database to find and add players to the tournament.
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">
+                    Search the FargoRate database to find and add players to the tournament.
+                  </p>
+                  <Button
+                    onClick={() => setIsCreatePlayerDialogOpen(true)}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Player Manually
+                  </Button>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Create Player Dialog */}
+      <Dialog open={isCreatePlayerDialogOpen} onOpenChange={setIsCreatePlayerDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Player</DialogTitle>
+            <DialogDescription>
+              Add a player that isn't in the FargoRate database. All fields except name are optional.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="player-name">Name *</Label>
+              <Input
+                id="player-name"
+                placeholder="Enter player name"
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="player-city">City</Label>
+              <Input
+                id="player-city"
+                placeholder="Enter city (optional)"
+                value={newPlayerCity}
+                onChange={(e) => setNewPlayerCity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="player-rating">Fargo Rating</Label>
+              <Input
+                id="player-rating"
+                type="number"
+                placeholder="Enter Fargo rating (optional)"
+                value={newPlayerFargoRating}
+                onChange={(e) => setNewPlayerFargoRating(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="player-league">League</Label>
+              <Select
+                value={newPlayerLeague}
+                onValueChange={(value) => setNewPlayerLeague(value as "APA" | "BCA" | "NAPA" | "OTHER" | "")}
+              >
+                <SelectTrigger id="player-league">
+                  <SelectValue placeholder="Select league (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="APA">APA</SelectItem>
+                  <SelectItem value="BCA">BCA</SelectItem>
+                  <SelectItem value="NAPA">NAPA</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreatePlayerDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAndAddPlayer}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create & Register
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

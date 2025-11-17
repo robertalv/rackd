@@ -4,7 +4,7 @@ import { getCurrentUserIdOrThrow } from "./lib/utils";
 import { CounterHelpers } from "./counters";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { autumn } from "./autumn";
+import { check } from "./autumn";
 
 // Get all tournaments
 export const getAllTournaments = query({
@@ -208,7 +208,7 @@ export const create = mutation({
     const userId = await getCurrentUserIdOrThrow(ctx);
 
     // Check tournament limit for free users (max 3 tournaments)
-    const unlimitedCheck = await autumn.check(ctx, {
+    const unlimitedCheck = await check(ctx, {
       featureId: "unlimited_tournaments",
     });
 

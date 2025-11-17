@@ -136,9 +136,9 @@ export const create = mutation({
     const playerId = await ctx.db.insert("players", {
       ...args,
       userId: userId,
-      bio: undefined,
-      homeVenue: undefined,
-      avatarUrl: undefined,
+      bio: null,
+      homeVenue: null,
+      avatarUrl: null,
       isVerified: false,
     });
 
@@ -184,10 +184,10 @@ export const createFromFargoRate = mutation({
       city: args.city,
       league: args.league,
       userId: userId,
-      bio: undefined,
-      homeVenue: undefined,
+      bio: null,
+      homeVenue: null,
       isVerified: false,
-      avatarUrl: undefined,
+      avatarUrl: null,
     });
 
     // Increment total player count using sharded counter
@@ -234,10 +234,10 @@ export const getOrCreateFromFargoRate = mutation({
       city: args.city,
       league: args.league,
       userId: userId,
-      bio: undefined,
-      homeVenue: undefined,
+      bio: null,
+      homeVenue: null,
       isVerified: false,
-      avatarUrl: undefined,
+      avatarUrl: null,
     });
 
     // Increment total player count using sharded counter

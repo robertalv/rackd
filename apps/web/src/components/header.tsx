@@ -84,27 +84,27 @@ export const HeroHeader = () => {
                                     asChild
                                     variant="outline"
                                     size="sm"
-                                    className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link to="/">
+                                    className={cn(isScrolled)}>
+                                    <a href="https://app.rackd.net/login" target="_blank" rel="noopener noreferrer">
                                         <span>Login</span>
-                                    </Link>
+                                    </a>
                                 </Button>
                                 <Button
                                     asChild
                                     size="sm"
                                     className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link to="/">
+                                    <a href="https://app.rackd.net/signup" target="_blank" rel="noopener noreferrer">
                                         <span>Sign Up</span>
-                                    </Link>
+                                    </a>
                                 </Button>
-                                <Button
+                                {/* <Button
                                     asChild
                                     size="sm"
                                     className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}>
                                     <Link to="/">
                                         <span>Join Waitlist</span>
                                     </Link>
-                                </Button>
+                                </Button> */}
                             </div>
                         </div>
                     </div>

@@ -18,7 +18,7 @@ export function BillingManager() {
   // Get tournament count for the current user
   const tournaments = useQuery(
     api.tournaments.getByOrganizer,
-    currentUser?._id ? { userId: currentUser._id } : "skip"
+    currentUser?.user?._id ? { userId: currentUser.user._id } : "skip"
   );
 
   const tournamentCount = tournaments?.length || 0;
@@ -45,13 +45,13 @@ export function BillingManager() {
     });
   };
 
-  if (isLoading || !customer) {
-    return (
-      <div className="flex flex-col gap-4">
-        <p className="text-sm text-muted-foreground">Loading billing information...</p>
-      </div>
-    );
-  }
+  // if (isLoading || !customer) {
+  //   return (
+  //     <div className="flex flex-col gap-4">
+  //       <p className="text-sm text-muted-foreground">Loading billing information...</p>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex flex-col gap-6">

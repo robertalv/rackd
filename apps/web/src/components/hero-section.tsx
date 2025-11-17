@@ -63,10 +63,10 @@ export default function HeroSection() {
                     <div className="relative mx-auto max-w-6xl px-6 pb-20">
                         <div className="relative z-10 mx-auto max-w-4xl text-center">
                             <div className="mb-10">
-                            <HeroPill 
+                            {/* <HeroPill 
                                 icon={<IconFlame className="text-red-500 size-4" />}
                                 text={<div className="gap-1"><span className="font-semibold">{waitlistCount?.total ?? 0}</span> people on waitlist</div>}
-                            />
+                            /> */}
                             </div>
                             <div className="flex flex-col md:flex-row items-center justify-center gap-2">
                             <TextEffect
@@ -122,7 +122,7 @@ export default function HeroSection() {
                                             required
                                         />
 
-                                        <div className="md:pr-1.5 lg:pr-0">
+                                        {/* <div className="md:pr-1.5 lg:pr-0">
                                             <Button
                                                 aria-label="submit"
                                                 size="sm"
@@ -135,7 +135,7 @@ export default function HeroSection() {
                                                     strokeWidth={2}
                                                 />
                                             </Button>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </form>
 

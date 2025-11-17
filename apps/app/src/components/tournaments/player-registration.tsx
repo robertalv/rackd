@@ -349,14 +349,14 @@ export function PlayerRegistration({ tournamentId }: Props) {
                         <div className="flex items-center space-x-3">
                           <ProfileAvatar
                             user={{
-                              displayName: registration.player?.name || registration.user?.name || 'Unknown',
-                              image: registration.player?.avatarUrl || registration.user?.image || undefined
+                              displayName: registration.player?.name || 'Unknown',
+                              image: registration.player?.avatarUrl || undefined
                             }}
                             size="sm"
                           />
                           <div>
                             <div className="font-medium">
-                              {registration.player?.name || registration.user?.name || 'Unknown'}
+                              {registration.player?.name || 'Unknown'}
                             </div>
                           
                           </div>

@@ -471,6 +471,37 @@ export function TournamentBracket({ matches, tournamentType, tournamentId, tourn
         .filter(m => m.bracketType === "grand_final")
         .map(transformMatch);
       
+      // Find the grand final match (should be the first one or the one with highest round)
+      const grandFinal = grandFinalMatches.length > 0 
+        ? grandFinalMatches.sort((a, b) => {
+            const roundA = parseInt(a.tournamentRoundText || "0");
+            const roundB = parseInt(b.tournamentRoundText || "0");
+            return roundB - roundA; // Highest round first
+          })[0]
+        : null;
+      
+      // Ensure winner's bracket final points to grand final
+      // Find the upper bracket final (match with no nextMatchId in upper bracket)
+      const upperFinal = upperMatches.find(m => {
+        // A match is a final if no other upper match has it as nextMatchId
+        return !upperMatches.some(other => other.nextMatchId === m.id);
+      });
+      
+      // Ensure loser's bracket final points to grand final
+      // Find the lower bracket final (match with no nextMatchId in lower bracket)
+      const lowerFinal = lowerMatches.find(m => {
+        // A match is a final if no other lower match has it as nextMatchId
+        return !lowerMatches.some(other => other.nextMatchId === m.id);
+      });
+      
+      // Link finals to grand final if they exist
+      if (grandFinal && upperFinal && !upperFinal.nextMatchId) {
+        upperFinal.nextMatchId = grandFinal.id;
+      }
+      if (grandFinal && lowerFinal && !lowerFinal.nextMatchId) {
+        lowerFinal.nextMatchId = grandFinal.id;
+      }
+      
       // Add grand final to lower bracket if it exists
       const allLowerMatches = [...lowerMatches, ...grandFinalMatches];
       

@@ -31,6 +31,8 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const [newPlayerFargoRating, setNewPlayerFargoRating] = useState("");
   const [newPlayerLeague, setNewPlayerLeague] = useState<"APA" | "BCA" | "NAPA" | "OTHER" | "">("");
   const [newPlayerCity, setNewPlayerCity] = useState("");
+  const [playerToRemove, setPlayerToRemove] = useState<{ id: Id<"players">; name: string } | null>(null);
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
   
   const tournament = useQuery(api.tournaments.getById, { id: tournamentId });
   const tournamentRegistrations = useQuery(api.tournaments.getRegistrations, { tournamentId });
@@ -75,10 +77,16 @@ export function PlayerRegistration({ tournamentId }: Props) {
   const handleRemovePlayer = async (playerId: Id<"players">) => {
     try {
       await removePlayer({ tournamentId, playerId });
+      setPlayerToRemove(null);
     } catch (error) {
       console.error("Failed to remove player:", error);
       alert("Failed to remove player.");
+      setPlayerToRemove(null);
     }
+  };
+
+  const handleRemoveClick = (playerId: Id<"players">, playerName: string) => {
+    setPlayerToRemove({ id: playerId, name: playerName });
   };
 
   const handleCheckIn = async (playerId: Id<"players">) => {
@@ -187,32 +195,97 @@ export function PlayerRegistration({ tournamentId }: Props) {
       return;
     }
 
+    if (isCreatingPlayer) {
+      return; // Prevent double submission
+    }
+
+    // Validate mutations are available
+    if (!createPlayer || !addPlayer) {
+      console.error("Mutations not available");
+      alert("System error: Please refresh the page and try again.");
+      return;
+    }
+
+    setIsCreatingPlayer(true);
+
     try {
-      // Create the player
-      const playerId = await createPlayer({
+      // Prepare the player data
+      const playerData: {
+        name: string;
+        fargoRating?: number;
+        league?: "APA" | "BCA" | "NAPA" | "OTHER";
+        city?: string;
+      } = {
         name: newPlayerName.trim(),
-        fargoRating: newPlayerFargoRating ? parseFloat(newPlayerFargoRating) : undefined,
-        league: newPlayerLeague || undefined,
-        city: newPlayerCity.trim() || undefined,
-      });
+      };
+
+      // Only add optional fields if they have values
+      if (newPlayerFargoRating && newPlayerFargoRating.trim() && !isNaN(parseFloat(newPlayerFargoRating))) {
+        const rating = parseFloat(newPlayerFargoRating);
+        if (rating >= 0 && rating <= 1000) {
+          playerData.fargoRating = rating;
+        }
+      }
+      if (newPlayerLeague) {
+        playerData.league = newPlayerLeague as "APA" | "BCA" | "NAPA" | "OTHER";
+      }
+      if (newPlayerCity && newPlayerCity.trim()) {
+        playerData.city = newPlayerCity.trim();
+      }
+
+      // Create the player
+      let playerId: Id<"players">;
+      try {
+        playerId = await createPlayer(playerData);
+        if (!playerId) {
+          throw new Error("Player creation returned no ID");
+        }
+      } catch (createError: any) {
+        console.error("Error creating player:", createError);
+        const errorMessage = createError?.message || "Failed to create player";
+        setIsCreatingPlayer(false);
+        alert(`Failed to create player: ${errorMessage}`);
+        return;
+      }
 
       // Add them to the tournament
-      await addPlayer({ tournamentId, playerId });
+      try {
+        await addPlayer({ tournamentId, playerId });
+      } catch (addError: any) {
+        console.error("Error adding player to tournament:", addError);
+        const errorMessage = addError?.message || "Failed to add player to tournament";
+        setIsCreatingPlayer(false);
+        if (errorMessage.includes("already registered")) {
+          alert("Player created successfully, but they are already registered for this tournament.");
+        } else {
+          alert(`Player created, but failed to add to tournament: ${errorMessage}`);
+        }
+        return;
+      }
 
-      // Reset form and close dialog
+      // Reset form and close dialog only if everything succeeded
       setNewPlayerName("");
       setNewPlayerFargoRating("");
       setNewPlayerLeague("");
       setNewPlayerCity("");
       setIsCreatePlayerDialogOpen(false);
+      setIsCreatingPlayer(false);
     } catch (error: any) {
-      console.error("Error creating and adding player:", error);
-      if (error?.message?.includes("already registered")) {
-        alert("This player is already registered for this tournament.");
-      } else {
-        alert(`Failed to create and add player: ${error?.message || "Unknown error"}`);
-      }
+      // Catch any unexpected errors
+      console.error("Unexpected error creating and adding player:", error);
+      const errorMessage = error?.message || "An unexpected error occurred";
+      setIsCreatingPlayer(false);
+      alert(`Failed to create and add player: ${errorMessage}`);
     }
+  };
+
+  const handleOpenCreatePlayerDialog = (prefillName?: string) => {
+    // Reset all fields first, then set the prefill name if provided
+    setNewPlayerFargoRating("");
+    setNewPlayerLeague("");
+    setNewPlayerCity("");
+    setNewPlayerName(prefillName || "");
+    setIsCreatePlayerDialogOpen(true);
   };
 
   // Filter out already registered players from the search results
@@ -350,7 +423,10 @@ export function PlayerRegistration({ tournamentId }: Props) {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => registration.player?._id && handleRemovePlayer(registration.player._id)}
+                            onClick={() => registration.player?._id && handleRemoveClick(
+                              registration.player._id,
+                              registration.player?.name || registration.user?.name || 'Unknown'
+                            )}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
                             Remove
@@ -414,11 +490,6 @@ export function PlayerRegistration({ tournamentId }: Props) {
                             </Avatar>
                             <div>
                               <div className="font-medium">{player.name}</div>
-                              {player.fargoId && (
-                                <div className="text-sm text-muted-foreground">
-                                  Fargo ID: {player.fargoId}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -611,7 +682,7 @@ export function PlayerRegistration({ tournamentId }: Props) {
                     No FargoRate players found for "{fargoSearchTerm}".
                   </p>
                   <Button
-                    onClick={() => setIsCreatePlayerDialogOpen(true)}
+                    onClick={() => handleOpenCreatePlayerDialog(fargoSearchTerm)}
                     variant="outline"
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -624,7 +695,7 @@ export function PlayerRegistration({ tournamentId }: Props) {
                     Search the FargoRate database to find and add players to the tournament.
                   </p>
                   <Button
-                    onClick={() => setIsCreatePlayerDialogOpen(true)}
+                    onClick={() => handleOpenCreatePlayerDialog()}
                     variant="outline"
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -637,8 +708,60 @@ export function PlayerRegistration({ tournamentId }: Props) {
         </Card>
       )}
 
+      {/* Remove Player Confirmation Dialog */}
+      <Dialog open={!!playerToRemove} onOpenChange={(open) => !open && setPlayerToRemove(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Player from Tournament</DialogTitle>
+            <DialogDescription>
+              {playerToRemove && isPlayerInBracket(playerToRemove.id) ? (
+                <>
+                  <strong>Warning:</strong> This player is currently in the bracket. Removing them may affect match results.
+                  <br />
+                  <br />
+                  Are you sure you want to remove <strong>{playerToRemove.name}</strong> from this tournament?
+                </>
+              ) : (
+                <>
+                  Are you sure you want to remove <strong>{playerToRemove?.name}</strong> from this tournament?
+                  <br />
+                  This action cannot be undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPlayerToRemove(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => playerToRemove && handleRemovePlayer(playerToRemove.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remove Player
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Player Dialog */}
-      <Dialog open={isCreatePlayerDialogOpen} onOpenChange={setIsCreatePlayerDialogOpen}>
+      <Dialog 
+        open={isCreatePlayerDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            // Reset form when dialog closes
+            setNewPlayerName("");
+            setNewPlayerFargoRating("");
+            setNewPlayerLeague("");
+            setNewPlayerCity("");
+          }
+          setIsCreatePlayerDialogOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Player</DialogTitle>
@@ -678,14 +801,13 @@ export function PlayerRegistration({ tournamentId }: Props) {
             <div className="space-y-2">
               <Label htmlFor="player-league">League</Label>
               <Select
-                value={newPlayerLeague}
+                value={newPlayerLeague || undefined}
                 onValueChange={(value) => setNewPlayerLeague(value as "APA" | "BCA" | "NAPA" | "OTHER" | "")}
               >
                 <SelectTrigger id="player-league">
                   <SelectValue placeholder="Select league (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
                   <SelectItem value="APA">APA</SelectItem>
                   <SelectItem value="BCA">BCA</SelectItem>
                   <SelectItem value="NAPA">NAPA</SelectItem>
@@ -701,9 +823,18 @@ export function PlayerRegistration({ tournamentId }: Props) {
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateAndAddPlayer}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create & Register
+            <Button onClick={handleCreateAndAddPlayer} disabled={isCreatingPlayer}>
+              {isCreatingPlayer ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create & Register
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -348,7 +348,7 @@ function TournamentDetailPage() {
           </Card>
 
           {/* Start Tournament Button */}
-          {tournament.status === "upcoming" && completionPercentage < 100 && (
+          {(tournament.status === "upcoming" || tournament.status === "active") && completionPercentage < 100 && (
             <Button 
               onClick={handleStartTournament}
               className="w-full"

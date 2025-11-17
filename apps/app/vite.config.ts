@@ -9,6 +9,9 @@ export default defineConfig({
 	plugins: [tsconfigPaths(), tanstackStart(), tailwindcss(), viteReact(), netlify()],
 	ssr: {
 		noExternal: ["@hugeicons/react"],
+		// Prevent styled-components from being bundled in SSR/server functions
+		// styled-components is client-only and causes "too many open files" errors in serverless
+		// By not including it in noExternal, it remains external (default behavior for node_modules)
 	},
 	optimizeDeps: {
 		esbuildOptions: {

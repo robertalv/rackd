@@ -143,7 +143,7 @@ export default function FeedScreen() {
 				>
 						<View>
 							{pinnedPosts.length > 0 && (
-								<View className="mb-4">
+								<View className="my-4">
 									<View className="flex-row items-center mb-3">
 										<Ionicons name="pin" size={14} color={withOpacity(themeColorForeground, opacity.OPACITY_80)} />
 										<Text className="text-xs font-semibold ml-1.5" style={{ color: withOpacity(themeColorForeground, opacity.OPACITY_80) }}>

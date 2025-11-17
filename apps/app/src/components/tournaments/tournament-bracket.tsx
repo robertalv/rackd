@@ -809,19 +809,18 @@ export function TournamentBracket({ matches, tournamentType, tournamentId, tourn
   if (bracketData.type === "double") {
     // Calculate header height for positioning the background overlay
     const headerHeight = 50; // Match the roundHeader.height
-    const headerBackgroundColor = getCSSVariable("--card") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)");
+    const headerBackgroundColor = getCSSVariable("--muted") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)");
     const headerBorderColor = getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)");
     
     return (
       <>
-        <div ref={bracketContainerRef} className="h-full overflow-auto bg-background dark:bg-[#0A0E1A] p-6 relative">
+        <div ref={bracketContainerRef} className="h-full overflow-auto bg-background relative">
           <div data-bracket-content className="inline-block min-w-full relative">
             {/* Full-width header background overlay - spans entire container width */}
             {containerWidth && (
               <div
-                className="absolute top-0 left-0 z-10 pointer-events-none"
+                className={`absolute top-0 left-0 z-10 pointer-events-none w-full`}
                 style={{
-                  top: '24px', // Account for p-6 padding (1.5rem = 24px)
                   width: `${containerWidth}px`,
                   height: `${headerHeight}px`,
                   backgroundColor: headerBackgroundColor,
@@ -840,23 +839,24 @@ export function TournamentBracket({ matches, tournamentType, tournamentId, tourn
                   isShown: true,
                   height: 50,
                   marginBottom: 25,
-                  fontSize: 14,
-                  fontColor: getCSSVariable("--foreground") || (isDark ? "oklch(0.9219 0 0)" : "oklch(0.3211 0 0)"),
+                  fontSize: 10,
+                  fontColor: getCSSVariable("--muted-foreground") || (isDark ? "oklch(0.7155 0 0)" : "oklch(0.5510 0.0234 264.3637)"),
                   backgroundColor: getCSSVariable("--card") || (isDark ? "oklch(0.2686 0 0)" : "oklch(1.0000 0 0)"),
                   fontFamily: getCSSVariable("--font-sans") || '"Inter", "Roboto", "Arial", "Helvetica", "sans-serif"',
-                  roundTextGenerator: (currentRound, roundsTotal) => {
-                    const roundNum = currentRound;
-                    const placement = getPlacementLabel(roundNum, roundsTotal, bracketSize);
-                    if (placement) {
-                      return `WB ROUND ${roundNum} (${placement})`;
-                    }
-                    return `WB ROUND ${roundNum}`;
-                  },
+                  // roundTextGenerator: (currentRound, roundsTotal) => {
+                  //   const roundNum = currentRound;
+                  //   const placement = getPlacementLabel(roundNum, roundsTotal, bracketSize);
+                  //   const bracketType = tournamentType === "double" ? "WB" : "";
+                  //   if (placement) {
+                  //     return `${bracketType} ROUND ${roundNum} (${placement})`;
+                  //   }
+                  //   return `${bracketType} ROUND ${roundNum}`;
+                  // },
                 },
                 connectorColor: getCSSVariable("--border") || (isDark ? "oklch(0.3715 0 0)" : "oklch(0.9276 0.0058 264.5313)"),
                 connectorColorHighlight: getCSSVariable("--primary") || "oklch(0.5000 0.1340 242.7490)",
                 width: 240,
-                boxHeight: 120,
+                boxHeight: 180,
                 spaceBetweenColumns: 60,
                 spaceBetweenRows: 20,
               },

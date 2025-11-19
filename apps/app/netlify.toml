@@ -1,5 +1,5 @@
 [build]
-  command = "cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  command = "corepack enable && corepack prepare pnpm@10.13.1 --activate && pnpm install --frozen-lockfile && cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && pnpm turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
   publish = "apps/app/dist/client"
 
 # Function configuration
@@ -9,6 +9,8 @@
   external_node_modules = ["@better-auth/expo"]
 
 # Edge Functions for low-latency operations
+# Edge functions are located in netlify/edge-functions/ at repo root
+# Note: Ensure Netlify base directory is set to repo root in Netlify UI
 [[edge_functions]]
   path = "/api/auth/*"
   function = "auth-middleware"
@@ -22,19 +24,19 @@
 
 # Deploy contexts for environment-specific configurations
 [context.production]
-  command = "cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  command = "corepack enable && corepack prepare pnpm@10.13.1 --activate && pnpm install --frozen-lockfile && cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && pnpm turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
   [context.production.environment]
     NODE_ENV = "production"
     VITE_ENV = "production"
 
 [context.branch-deploy]
-  command = "cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  command = "corepack enable && corepack prepare pnpm@10.13.1 --activate && pnpm install --frozen-lockfile && cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && pnpm turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
   [context.branch-deploy.environment]
     NODE_ENV = "development"
     VITE_ENV = "staging"
 
 [context.deploy-preview]
-  command = "cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  command = "corepack enable && corepack prepare pnpm@10.13.1 --activate && pnpm install --frozen-lockfile && cd packages/backend && npx convex deploy -y --cmd 'cd ../../apps/app && pnpm turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
   [context.deploy-preview.environment]
     NODE_ENV = "development"
     VITE_ENV = "preview"
@@ -43,6 +45,8 @@
 # Actual values should be set in Netlify UI or via CLI
 [build.environment]
   NODE_VERSION = "20"
+  PNPM_VERSION = "10.13.1"
+  PNPM_FLAGS = "--frozen-lockfile"
   # Convex
   VITE_CONVEX_URL = "$VITE_CONVEX_URL"
   EXPO_PUBLIC_CONVEX_URL = "$EXPO_PUBLIC_CONVEX_URL"

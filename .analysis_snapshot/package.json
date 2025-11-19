@@ -1,0 +1,39 @@
+{
+  "name": "rackd",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F @rackd/backend dev",
+    "dev:setup": "turbo -F @rackd/backend dev:setup"
+  },
+  "dependencies": {
+    "convex": "catalog:"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=20 <21",
+    "pnpm": ">=10.13.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0",
+      "react-native-renderer": "19.1.0",
+      "@types/react-dom": "~19.1.7",
+      "locate-path": "^7.2.0",
+      "find-up": "^7.0.0"
+    }
+  }
+}

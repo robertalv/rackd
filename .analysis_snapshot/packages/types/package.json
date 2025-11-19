@@ -1,0 +1,28 @@
+{
+  "name": "@rackd/types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./notifications": "./src/notifications.ts",
+    "./players": "./src/players.ts",
+    "./matches": "./src/matches.ts",
+    "./apa": "./src/apa.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rackd/backend": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@rackd/eslint-config": "workspace:*",
+    "@rackd/typescript-config": "workspace:*",
+    "typescript": "5.9.2"
+  }
+}
+

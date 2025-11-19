@@ -1,0 +1,145 @@
+# CodeRabbit Configuration for rackd
+# Documentation: https://docs.coderabbit.ai/reference/config-file
+
+# Language settings
+language:
+  enabled:
+    - typescript
+    - javascript
+    - tsx
+    - jsx
+  exclude:
+    - "**/*.d.ts"
+    - "**/_generated/**"
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.turbo/**"
+    - "**/*.config.js"
+    - "**/*.config.mjs"
+
+# Review settings
+reviews:
+  enabled: true
+  profile: default
+  
+  # Auto-review on PR creation and updates
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - master
+      - develop
+  
+  # Review focus areas for our stack
+  focus:
+    - "typescript"
+    - "react"
+    - "react-native"
+    - "convex"
+    - "tanstack-start"
+    - "monorepo"
+    - "security"
+    - "performance"
+  
+  # Paths to review
+  paths:
+    include:
+      - "apps/**"
+      - "packages/**"
+    exclude:
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/build/**"
+      - "**/_generated/**"
+      - "**/*.lock"
+      - "**/.turbo/**"
+      - "**/ios/Pods/**"
+      - "**/android/**/build/**"
+
+# Code quality settings
+quality:
+  # Enforce TypeScript best practices
+  typescript:
+    strict: true
+    no_any: true
+  
+  # React/React Native specific checks
+  react:
+    hooks: true
+    accessibility: true
+    performance: true
+  
+  # Security checks
+  security: true
+  
+  # Performance checks
+  performance: true
+  
+  # Code complexity
+  complexity: true
+
+# Linting tools integration
+tools:
+  # TypeScript/ESLint
+  eslint:
+    enabled: true
+    args: ["--ext", ".ts,.tsx,.js,.jsx"]
+  
+  # TypeScript compiler
+  typescript:
+    enabled: true
+  
+  # Shell scripts
+  shellcheck:
+    enabled: true
+  
+  # Python (if any scripts)
+  ruff:
+    enabled: false
+  
+  # Markdown
+  markdownlint:
+    enabled: true
+
+# Chat and assistance
+chat:
+  enabled: true
+
+# Summaries
+summaries:
+  enabled: true
+  high_level_summary: true
+  poem: false
+  
+  # Generate release notes
+  release_notes:
+    enabled: true
+
+# Review status
+review_status:
+  enabled: true
+  comment: true
+
+# Ignore patterns (files/folders CodeRabbit should skip)
+ignore:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/_generated/**"
+  - "**/.turbo/**"
+  - "**/*.lock"
+  - "**/ios/Pods/**"
+  - "**/android/**/build/**"
+  - "**/*.config.js"
+  - "**/*.config.mjs"
+
+# Monorepo specific settings
+monorepo:
+  workspace_detection: true
+  review_dependencies: true
+
+# Early access features
+early_access:
+  enable: false
+

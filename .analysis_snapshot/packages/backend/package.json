@@ -1,0 +1,34 @@
+{
+  "name": "@rackd/backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "convex dev",
+    "dev:setup": "convex dev --configure --until-success",
+    "deploy": "convex deploy",
+    "deploy:prod": "convex deploy --prod",
+    "logs": "convex logs",
+    "logs:prod": "convex logs --prod"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@better-auth/expo": "catalog:",
+    "@convex-dev/aggregate": "^0.1.25",
+    "@convex-dev/better-auth": "catalog:",
+    "@convex-dev/migrations": "^0.2.9",
+    "@convex-dev/resend": "^0.1.13",
+    "@convex-dev/sharded-counter": "^0.1.8",
+    "@rackd/cloudflare": "workspace:*",
+    "@useautumn/convex": "^0.0.15",
+    "autumn-js": "^0.1.47",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "loops": "^6.0.1",
+    "resend": "^6.4.2"
+  }
+}

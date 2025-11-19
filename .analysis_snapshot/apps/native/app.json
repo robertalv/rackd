@@ -1,0 +1,101 @@
+{
+  "expo": {
+    "scheme": "rackd",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "bundler": "metro"
+    },
+    "name": "Rackd",
+    "slug": "native",
+    "version": "1.0.0",
+    "icon": "assets/images/icon-1024.png",
+    "ios": {
+      "bundleIdentifier": "com.rackd.app",
+      "buildNumber": "5",
+      "associatedDomains": [
+        "applinks:rackd.net",
+        "applinks:www.rackd.net",
+        "applinks:rackd.net",
+        "applinks:www.rackd.net"
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.rackd.app",
+      "versionCode": 5,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "rackd.net",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rackd.net",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ]
+    },
+    "splash": {
+      "image": "assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload tournament flyers."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "The app needs access to your photos to save QR codes.",
+          "savePhotosPermission": "The app needs permission to save QR codes to your photos."
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "rackd"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e1008f52-5551-4eb7-8847-a7b1d0c52a0b"
+      }
+    },
+    "owner": "rackd"
+  }
+}

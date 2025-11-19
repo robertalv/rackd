@@ -1,0 +1,27 @@
+# Code owners for rackd monorepo
+# Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners
+* @robertalvarez
+
+# Apps
+/apps/app/ @robertalvarez
+/apps/web/ @robertalvarez
+/apps/native/ @robertalvarez
+
+# Backend
+/packages/backend/ @robertalvarez
+
+# Shared packages
+/packages/ui/ @robertalvarez
+/packages/types/ @robertalvarez
+/packages/bracket/ @robertalvarez
+
+# Configuration files
+/.github/ @robertalvarez
+/.coderabbit.yaml @robertalvarez
+/package.json @robertalvarez
+/pnpm-workspace.yaml @robertalvarez
+/turbo.json @robertalvarez
+/tsconfig.json @robertalvarez
+

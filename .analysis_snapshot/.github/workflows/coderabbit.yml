@@ -1,0 +1,37 @@
+name: CodeRabbit Review
+
+# CodeRabbit primarily works through the GitHub App (webhooks)
+# This workflow serves as documentation and can trigger additional checks if needed
+# Main integration: Install CodeRabbit GitHub App at https://github.com/apps/coderabbitai
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify-coderabbit-config:
+    name: Verify CodeRabbit Configuration
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Verify .coderabbit.yaml exists
+        run: |
+          if [ ! -f .coderabbit.yaml ]; then
+            echo "Error: .coderabbit.yaml not found"
+            exit 1
+          fi
+          echo "✓ CodeRabbit configuration file found"
+      
+      - name: Validate configuration
+        run: |
+          echo "CodeRabbit is configured for this repository"
+          echo "Ensure the GitHub App is installed: https://github.com/apps/coderabbitai"
+

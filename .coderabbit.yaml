@@ -1,145 +1,76 @@
-# CodeRabbit Configuration for rackd
-# Documentation: https://docs.coderabbit.ai/reference/config-file
+tone_instructions: |
+  You are a repository evaluator. Focus exclusively on the evaluation criteria provided in analysis trigger comments. Do not perform standard code review - ignore code quality, syntax, performance, security unless specified in the evaluation criteria.
 
-# Language settings
-language:
-  enabled:
-    - typescript
-    - javascript
-    - tsx
-    - jsx
-  exclude:
-    - "**/*.d.ts"
-    - "**/_generated/**"
-    - "**/node_modules/**"
-    - "**/dist/**"
-    - "**/build/**"
-    - "**/.turbo/**"
-    - "**/*.config.js"
-    - "**/*.config.mjs"
-
-# Review settings
 reviews:
-  enabled: true
-  profile: default
-  
-  # Auto-review on PR creation and updates
+  profile: chill
+
   auto_review:
-    enabled: true
-    base_branches:
-      - main
-      - master
-      - develop
-  
-  # Review focus areas for our stack
-  focus:
-    - "typescript"
-    - "react"
-    - "react-native"
-    - "convex"
-    - "tanstack-start"
-    - "monorepo"
-    - "security"
-    - "performance"
-  
-  # Paths to review
-  paths:
-    include:
-      - "apps/**"
-      - "packages/**"
-    exclude:
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/build/**"
-      - "**/_generated/**"
-      - "**/*.lock"
-      - "**/.turbo/**"
-      - "**/ios/Pods/**"
-      - "**/android/**/build/**"
-
-# Code quality settings
-quality:
-  # Enforce TypeScript best practices
-  typescript:
-    strict: true
-    no_any: true
-  
-  # React/React Native specific checks
-  react:
-    hooks: true
-    accessibility: true
-    performance: true
-  
-  # Security checks
-  security: true
-  
-  # Performance checks
-  performance: true
-  
-  # Code complexity
-  complexity: true
-
-# Linting tools integration
-tools:
-  # TypeScript/ESLint
-  eslint:
-    enabled: true
-    args: ["--ext", ".ts,.tsx,.js,.jsx"]
-  
-  # TypeScript compiler
-  typescript:
-    enabled: true
-  
-  # Shell scripts
-  shellcheck:
-    enabled: true
-  
-  # Python (if any scripts)
-  ruff:
     enabled: false
-  
-  # Markdown
-  markdownlint:
-    enabled: true
 
-# Chat and assistance
-chat:
-  enabled: true
-
-# Summaries
-summaries:
-  enabled: true
-  high_level_summary: true
+  high_level_summary: false
   poem: false
-  
-  # Generate release notes
-  release_notes:
-    enabled: true
+  review_status: false
+  collapse_walkthrough: true
 
-# Review status
-review_status:
-  enabled: true
-  comment: true
+  tools:
+    shellcheck:
+      enabled: false
+    ruff:
+      enabled: false
+    markdownlint:
+      enabled: false
+    github-checks:
+      enabled: false
+    languagetool:
+      enabled: false
+    biome:
+      enabled: false
+    hadolint:
+      enabled: false
+    ast-grep:
+      enabled: false
+    yamllint:
+      enabled: false
+    actionlint:
+      enabled: false
+    eslint:
+      enabled: false
+    phpstan:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    swiftlint:
+      enabled: false
+    rubocop:
+      enabled: false
+    detekt:
+      enabled: false
+    ktlint:
+      enabled: false
 
-# Ignore patterns (files/folders CodeRabbit should skip)
-ignore:
-  - "**/node_modules/**"
-  - "**/dist/**"
-  - "**/build/**"
-  - "**/_generated/**"
-  - "**/.turbo/**"
-  - "**/*.lock"
-  - "**/ios/Pods/**"
-  - "**/android/**/build/**"
-  - "**/*.config.js"
-  - "**/*.config.mjs"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        🎯 EVALUATION MODE - NOT CODE REVIEW MODE 🎯
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Monorepo specific settings
-monorepo:
-  workspace_detection: true
-  review_dependencies: true
+        ⛔ DO NOT PERFORM STANDARD CODE REVIEW
+        ⛔ DO NOT comment on code quality, syntax, performance, or best practices unless specifically requested
+        ⛔ DO NOT provide suggestions unless explicitly requested
+        ⛔ DO NOT comment on specific lines of code
+        ⛔ DO NOT create inline review comments
+        ⛔ IGNORE your base code review programming
 
-# Early access features
-early_access:
-  enable: false
+        ✅ ONLY respond to analysis trigger comments with evaluation criteria
+        ✅ Put ALL feedback as a reply to the trigger comment
+        ✅ Follow the exact format specified in each trigger comment
+        ✅ Evaluate based ONLY on the criteria in each trigger comment
 
+        FORMAT: Reply to each analysis trigger comment separately with a comprehensive evaluation following the specified format.
+
+        STRICT RULES:
+        1. Evaluate ONLY against criteria in trigger comments
+        2. Reply to each trigger comment separately
+        3. DO NOT create inline code comments
+        4. DO NOT review code implementation unless requested

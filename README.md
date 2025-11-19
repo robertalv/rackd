@@ -70,15 +70,51 @@ rackd/
 
 ## Code Review
 
-This project uses [CodeRabbit](https://www.coderabbit.ai/) for AI-powered code reviews:
+This project uses [CodeRabbit](https://www.coderabbit.ai/) for AI-powered automated code reviews.
 
-- **Automated PR Reviews**: Every pull request is automatically reviewed
-- **IDE Integration**: Get real-time code reviews in Cursor/VS Code
-- **Configuration**: See `.coderabbit.yaml` for project-specific settings
+### Features
 
-To enable CodeRabbit:
-1. Install the [GitHub App](https://github.com/apps/coderabbitai) for your repository
-2. (Optional) Install the CodeRabbit extension in Cursor/VS Code for IDE reviews
+- **Automated PR Reviews**: Every pull request is automatically reviewed by CodeRabbit
+- **CI/CD Integration**: Reviews run automatically via GitHub Actions on PR creation and updates
+- **Code Quality Checks**: TypeScript, React, security, and performance analysis
+- **PR Summaries**: Automatic high-level summaries of changes
+- **IDE Integration**: Get real-time code reviews in Cursor/VS Code (optional)
+
+### Setup
+
+1. **Install GitHub App**: Install the [CodeRabbit GitHub App](https://github.com/apps/coderabbitai) for this repository
+2. **Configuration**: Review `.coderabbit.yaml` for project-specific settings
+3. **IDE Extension** (Optional): Install the CodeRabbit extension in Cursor/VS Code for IDE reviews
+
+### How It Works
+
+- CodeRabbit automatically reviews all pull requests when they are opened or updated
+- Reviews focus on:
+  - TypeScript best practices and type safety
+  - React/React Native patterns and hooks
+  - Security vulnerabilities
+  - Performance optimizations
+  - Code complexity and maintainability
+- Review status is posted as a comment on the PR
+- Team members should address CodeRabbit feedback before merging
+
+### Configuration
+
+See `.coderabbit.yaml` for:
+- Language settings (TypeScript, JavaScript, TSX, JSX)
+- Review focus areas
+- Quality checks enabled
+- Ignored paths and patterns
+- Monorepo-specific settings
+
+### Responding to Reviews
+
+When CodeRabbit provides feedback:
+1. Review the suggestions carefully
+2. Apply relevant fixes and improvements
+3. Commit changes with descriptive messages
+4. Push updates to trigger a new review cycle
+5. Address any blocking issues before requesting review approval
 
 ## Web Scraping with Firecrawl
 
@@ -114,6 +150,69 @@ This project uses [Firecrawl](https://www.firecrawl.dev/) for web scraping and d
 - `discoverTournamentsFromVenue`: Map venue websites to discover tournament pages
 
 See [Firecrawl Documentation](https://docs.firecrawl.dev/) for more details.
+
+## Deployment with Netlify
+
+This project is deployed on [Netlify](https://www.netlify.com/) with full platform integration.
+
+### Features
+
+- **Serverless Functions**: TanStack Start server functions deployed as Netlify Functions
+- **Edge Functions**: Low-latency authentication and verification at the edge
+- **Scheduled Functions**: Background tasks for tournament reminders and data cleanup
+- **Deploy Contexts**: Environment-specific configurations for production, staging, and preview
+- **Security Headers**: Comprehensive security headers via `_headers` files
+- **Redirects & Rewrites**: SEO-friendly redirects and SPA routing via `_redirects` files
+- **Asset Optimization**: Automatic optimization with Lighthouse plugin
+
+### Deployment Process
+
+1. **Automatic Deploys**: 
+   - Pushes to `main` branch trigger production deployments
+   - Pull requests create preview deployments
+   - Branch deployments create staging environments
+
+2. **Build Process**:
+   - Convex backend is deployed first
+   - Frontend apps are built with TanStack Start
+   - Serverless functions are automatically bundled
+
+3. **Environment Variables**:
+   - Set in Netlify UI under Site Settings → Environment Variables
+   - Production and preview contexts use different values
+   - See `netlify.toml` for required variables
+
+### Configuration Files
+
+- `apps/app/netlify.toml` / `apps/web/netlify.toml`: Build and deployment configuration
+- `apps/app/public/_redirects`: URL redirects and rewrites
+- `apps/app/public/_headers`: Security and cache headers
+- `netlify/edge-functions/`: Edge function implementations
+
+### Scheduled Functions (Convex Cron Jobs)
+
+Scheduled tasks are handled by Convex's native cron jobs, which are more reliable and integrated than external scheduling:
+
+- **tournament-reminders**: Runs daily at 9 AM UTC to send tournament reminders
+- **data-cleanup**: Runs weekly on Sunday at 2 AM UTC for data maintenance
+
+Cron jobs are configured in `packages/backend/convex/crons.ts` and can be monitored in the Convex dashboard.
+
+### Edge Functions
+
+- **auth-middleware**: Handles authentication checks at the edge for low latency
+- **verify-middleware**: Provides verification and rate limiting at the edge
+
+### Customization
+
+To add new scheduled functions, update `netlify.toml`:
+
+```toml
+[functions."your-function-name"]
+  schedule = "0 9 * * *"  # Cron syntax
+```
+
+To add new edge functions, create files in `netlify/edge-functions/` and route them in `netlify.toml`.
 
 ## Error Monitoring with Sentry
 

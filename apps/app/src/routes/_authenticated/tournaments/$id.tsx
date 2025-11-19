@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { callConvexQuery } from "@/lib/convex-server";
+import type { RouterAppContext } from "@/routes/__root";
+import Loader from "@/components/loader";
 import { ResizableLayout } from "@/components/layout/resizable-layout";
 import { TournamentDashboard } from "@/components/tournaments/tournament-dashboard";
 import { TablesPlayersView } from "@/components/tournaments/tables-players-view";
@@ -49,7 +52,52 @@ type ViewMode = "dashboard" | "bracket" | "tables" | "players" | "matches" | "re
 type LeftPanelMode = "overview" | "players" | "stats";
 
 export const Route = createFileRoute("/_authenticated/tournaments/$id")({
+  // Loader for SSR data fetching
+  loader: async ({ context, params }) => {
+    const { queryClient, convexQueryClient } = context as RouterAppContext;
+    const tournamentId = params.id as Id<"tournaments">;
+    
+    // Fetch initial tournament data server-side
+    const tournament = await callConvexQuery(
+      queryClient,
+      convexQueryClient,
+      api.tournaments.getById,
+      { id: tournamentId }
+    );
+    
+    // Prefetch related data in parallel
+    const [matches, venue, managers] = await Promise.all([
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.matches.getByTournament,
+        { tournamentId }
+      ).catch(() => []), // Handle errors gracefully
+      tournament?.venueId
+        ? callConvexQuery(
+            queryClient,
+            convexQueryClient,
+            api.venues.getById,
+            { id: tournament.venueId }
+          ).catch(() => null)
+        : Promise.resolve(null),
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.tournaments.getManagers,
+        { tournamentId }
+      ).catch(() => []), // Handle errors gracefully
+    ]);
+    
+    return {
+      initialTournament: tournament,
+      initialMatches: matches,
+      initialVenue: venue,
+      initialManagers: managers,
+    };
+  },
   component: TournamentDetailPage,
+  pendingComponent: () => <Loader />,
 });
 
 type TournamentStorage = {
@@ -174,6 +222,8 @@ function TournamentDetailPage() {
     }
   }, [saveState]);
 
+  // Upgrade to real-time Convex subscriptions for live updates
+  // The queryClient will use the prefetched data initially, then upgrade to real-time
   const tournament = useQuery(api.tournaments.getById, { id: tournamentId });
   const matches = useQuery(api.matches.getByTournament, { tournamentId });
   const venue = useQuery(
@@ -224,8 +274,13 @@ function TournamentDetailPage() {
   }, [tournament, totalMatches, completedMatches, completionPercentage, tournamentId, updateTournament]);
 
   // Early return AFTER all hooks are called
+  // Use Suspense for better loading UX
   if (!tournament) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>;
+    return (
+      <Suspense fallback={<Loader />}>
+        <div className="flex items-center justify-center h-full">Loading...</div>
+      </Suspense>
+    );
   }
 
   const isOrganizer = tournament && currentUserId && tournament.organizerId === currentUserId as Id<"users">;

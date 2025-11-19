@@ -240,3 +240,6 @@ export function EditTableModal({ open, onOpenChange, table, onUpdateTable }: Edi
 
 
 
+
+
+

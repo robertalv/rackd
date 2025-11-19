@@ -8,7 +8,6 @@ language:
     - javascript
     - tsx
     - jsx
-  # Focus on your main apps and packages
   exclude:
     - "**/*.d.ts"
     - "**/_generated/**"
@@ -21,18 +20,29 @@ language:
 
 # Review settings
 reviews:
-  # Review all pull requests
   enabled: true
+  profile: default
   
-  # Focus areas for your stack
+  # Auto-review on PR creation and updates
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - master
+      - develop
+  
+  # Review focus areas for our stack
   focus:
     - "typescript"
     - "react"
     - "react-native"
     - "convex"
+    - "tanstack-start"
     - "monorepo"
+    - "security"
+    - "performance"
   
-  # Paths to prioritize in reviews
+  # Paths to review
   paths:
     include:
       - "apps/**"
@@ -44,36 +54,72 @@ reviews:
       - "**/_generated/**"
       - "**/*.lock"
       - "**/.turbo/**"
+      - "**/ios/Pods/**"
+      - "**/android/**/build/**"
 
 # Code quality settings
 quality:
   # Enforce TypeScript best practices
   typescript:
     strict: true
+    no_any: true
   
   # React/React Native specific checks
   react:
     hooks: true
     accessibility: true
+    performance: true
   
   # Security checks
   security: true
   
   # Performance checks
   performance: true
+  
+  # Code complexity
+  complexity: true
+
+# Linting tools integration
+tools:
+  # TypeScript/ESLint
+  eslint:
+    enabled: true
+    args: ["--ext", ".ts,.tsx,.js,.jsx"]
+  
+  # TypeScript compiler
+  typescript:
+    enabled: true
+  
+  # Shell scripts
+  shellcheck:
+    enabled: true
+  
+  # Python (if any scripts)
+  ruff:
+    enabled: false
+  
+  # Markdown
+  markdownlint:
+    enabled: true
 
 # Chat and assistance
 chat:
   enabled: true
-  
+
 # Summaries
 summaries:
-  # Generate PR summaries
   enabled: true
+  high_level_summary: true
+  poem: false
   
   # Generate release notes
   release_notes:
     enabled: true
+
+# Review status
+review_status:
+  enabled: true
+  comment: true
 
 # Ignore patterns (files/folders CodeRabbit should skip)
 ignore:
@@ -85,17 +131,15 @@ ignore:
   - "**/*.lock"
   - "**/ios/Pods/**"
   - "**/android/**/build/**"
+  - "**/*.config.js"
+  - "**/*.config.mjs"
 
 # Monorepo specific settings
 monorepo:
-  # Detect changes across workspace
   workspace_detection: true
-  
-  # Review dependent packages when root changes
   review_dependencies: true
 
 # Early access features
 early_access:
-  # Enable experimental features
   enable: false
 

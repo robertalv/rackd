@@ -117,6 +117,7 @@ export function TournamentForm() {
     gameType?: "eight_ball" | "nine_ball" | "ten_ball" | "one_pocket" | "bank_pool";
     playerType?: "singles" | "doubles" | "scotch_doubles" | "teams";
     maxPlayers?: number;
+    screenshot?: string;
   }) => {
     // Populate form fields with extracted information
     if (info.name) setValue("name", info.name, { shouldDirty: true });
@@ -137,6 +138,10 @@ export function TournamentForm() {
     if (info.gameType) setValue("gameType", info.gameType, { shouldDirty: true });
     if (info.playerType) setValue("playerType", info.playerType, { shouldDirty: true });
     if (info.maxPlayers) setValue("maxPlayers", info.maxPlayers, { shouldDirty: true });
+    // Handle screenshot from Firecrawl extraction
+    if (info.screenshot) {
+      setValue("flyerUrl", info.screenshot, { shouldDirty: true });
+    }
   }, [setValue]);
 
   const handleFlyerUpload = useCallback((url: string) => {
@@ -258,8 +263,7 @@ export function TournamentForm() {
                 </div>
 
                 {/* URL Importer */}
-                {/* TODO: Finish later. */}
-                {/* <TournamentUrlImporter onExtract={handleExtractInfo} /> */}
+                <TournamentUrlImporter onExtract={handleExtractInfo} />
 
                 <div className="space-y-2">
                   <Label htmlFor="name">Tournament Name *</Label>

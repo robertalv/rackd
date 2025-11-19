@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
+import { callConvexQuery } from "@/lib/convex-server";
+import type { RouterAppContext } from "@/routes/__root";
+import Loader from "@/components/loader";
 import { Button } from "@rackd/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
 import { Badge } from "@rackd/ui/components/badge";
@@ -20,7 +23,69 @@ import { HeaderLabel } from "@rackd/ui/components/label";
 import { PageHeader } from "@/components/layout/page-header";
 
 export const Route = createFileRoute("/_authenticated/players/$id")({
+  loader: async ({ context, params }) => {
+    const { queryClient, convexQueryClient } = context as RouterAppContext;
+    const playerId = params.id as Id<"players"> | Id<"users">;
+    
+    const player = await callConvexQuery(
+      queryClient,
+      convexQueryClient,
+      api.players.getByIdOrUserId,
+      { id: playerId }
+    );
+    
+    if (!player) {
+      return { initialPlayer: null };
+    }
+    
+    const resolvedPlayerId = player._id as Id<"players">;
+    
+    const [organizedTournaments, managedTournaments, playedTournaments, matches, userData] = await Promise.all([
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.players.getOrganizedTournaments,
+        { playerId: resolvedPlayerId }
+      ).catch(() => []),
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.players.getManagedTournaments,
+        { playerId: resolvedPlayerId }
+      ).catch(() => []),
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.players.getPlayedTournaments,
+        { playerId: resolvedPlayerId }
+      ).catch(() => []),
+      callConvexQuery(
+        queryClient,
+        convexQueryClient,
+        api.matches.getByPlayerId,
+        { playerId: resolvedPlayerId, limit: 100 }
+      ).catch(() => []),
+      player.userId
+        ? callConvexQuery(
+            queryClient,
+            convexQueryClient,
+            api.users.getProfile,
+            { userId: player.userId as Id<"users"> }
+          ).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    
+    return {
+      initialPlayer: player,
+      initialOrganizedTournaments: organizedTournaments,
+      initialManagedTournaments: managedTournaments,
+      initialPlayedTournaments: playedTournaments,
+      initialMatches: matches,
+      initialUserData: userData,
+    };
+  },
   component: PlayerDetailPage,
+  pendingComponent: () => <Loader />,
 });
 
 function PlayerDetailPage() {
@@ -31,20 +96,13 @@ function PlayerDetailPage() {
   const [tournamentRole, setTournamentRole] = useState<"organizer" | "manager" | "player">("player");
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // Use the new function that handles both user IDs and player IDs
   const player = useQuery(api.players.getByIdOrUserId, { id: id as Id<"players"> | Id<"users"> });
   
-  // Get the resolved player ID from the player object
-  // Ensure it's a valid player ID (not undefined and player exists)
   const resolvedPlayerId = useMemo((): Id<"players"> | undefined => {
     if (!player || !player._id) return undefined;
-    // The player object from getByIdOrUserId should always have a valid player _id
-    // Cast to ensure TypeScript knows it's a player ID
     return player._id as Id<"players">;
   }, [player]);
   
-  // Get user data - always call hook unconditionally, use skip if no userId
-  // Use a stable check to avoid hook order issues
   const hasUserId = player?.userId ? true : false;
   const userId = player?.userId as Id<"users"> | undefined;
   const userData = useQuery(
@@ -52,10 +110,6 @@ function PlayerDetailPage() {
     hasUserId && userId ? { userId } : "skip"
   );
 
-  // Get tournaments - always call hooks unconditionally
-  // Use a stable check to avoid hook order issues
-  // Only call when we have a valid player ID - use explicit check to ensure type narrowing
-  // Create a stable variable to ensure TypeScript type narrowing works correctly
   const playerIdForQueries: Id<"players"> | undefined = resolvedPlayerId;
   const organizedTournaments = useQuery(
     api.players.getOrganizedTournaments,
@@ -70,13 +124,11 @@ function PlayerDetailPage() {
     playerIdForQueries ? { playerId: playerIdForQueries } : "skip"
   );
   
-  // Get matches - always call hook unconditionally
   const matches = useQuery(
     api.matches.getByPlayerId,
     playerIdForQueries ? { playerId: playerIdForQueries, limit: 100 } : "skip"
   );
 
-  // Helper function - must be defined before hooks
   const getPlayerCategory = (rating?: number | null) => {
     if (!rating) return { label: "No Rating", bg: "bg-gray-900/20", text: "text-gray-700", accentBg: "bg-gradient-to-br from-gray-600 to-gray-700" };
     if (rating >= 600) return { label: "Pro Player", bg: "bg-amber-900/20", text: "text-amber-700", accentBg: "bg-gradient-to-br from-amber-600 to-amber-700" };
@@ -85,13 +137,11 @@ function PlayerDetailPage() {
     return { label: "Beginner Player", bg: "bg-gray-900/20", text: "text-gray-700", accentBg: "bg-gradient-to-br from-gray-600 to-gray-700" };
   };
 
-  // Calculate statistics - useMemo hooks MUST be called before early returns
   const totalMatches = useMemo(() => matches?.length || 0, [matches]);
   const wins = useMemo(() => matches?.filter(match => match.winnerId === resolvedPlayerId).length || 0, [matches, resolvedPlayerId]);
   const losses = useMemo(() => totalMatches - wins, [totalMatches, wins]);
   const winRate = useMemo(() => totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : "0", [totalMatches, wins]);
 
-  // Calculate achievements - MUST be called before early returns
   const achievements = useMemo(() => {
     if (!matches || !player) return [];
     const ach = [];
@@ -118,7 +168,6 @@ function PlayerDetailPage() {
     return ach;
   }, [matches, resolvedPlayerId, playedTournaments, player]);
 
-  // Get recent matches (last 10) - MUST be called before early returns
   const recentMatches = useMemo(() => {
     if (!matches) return [];
     return matches.slice(0, 10).map(match => {
@@ -141,12 +190,13 @@ function PlayerDetailPage() {
     });
   }, [matches, resolvedPlayerId]);
 
-  // Loading state - check after all hooks are called
   if (player === undefined || organizedTournaments === undefined || managedTournaments === undefined || playedTournaments === undefined || matches === undefined) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading player data...</div>
-      </div>
+      <Suspense fallback={<Loader />}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading player data...</div>
+        </div>
+      </Suspense>
     );
   }
 
@@ -154,26 +204,20 @@ function PlayerDetailPage() {
     throw notFound();
   }
 
-  // Determine if this is the current user's own profile
   const isOwnProfile = currentUser?.user?.playerId === resolvedPlayerId;
 
-  // Get player category based on Fargo rating
   const category = getPlayerCategory(player.fargoRating ?? undefined);
   const config = category;
 
-  // Get location
   const location = [player.city].filter(Boolean).join(", ") || "Location not set";
 
-  // Get username from user data
   const username = userData?.username ? `@${userData.username}` : undefined;
 
-  // Get current tournament list based on role
   const currentTournaments = 
     tournamentRole === "organizer" ? (organizedTournaments || []) :
     tournamentRole === "manager" ? (managedTournaments || []) :
     (playedTournaments || []);
 
-  // Action buttons for header
   const actionButton = !isOwnProfile ? (
     <div className="flex gap-2">
       <Button
@@ -205,7 +249,6 @@ function PlayerDetailPage() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
-        {/* Player Info Badges */}
         <div className="flex items-center gap-3 flex-wrap mb-6">
           <Badge className={`${config.bg} ${config.text}`}>
             {category.label}
@@ -224,11 +267,8 @@ function PlayerDetailPage() {
           )}
         </div>
 
-        {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
           <div className="lg:col-span-2">
-            {/* Player Avatar */}
             <div className="aspect-[21/9] w-full rounded-lg overflow-hidden bg-muted mb-8 flex items-center justify-center">
               <div className="w-32 h-32 rounded-full bg-background border-4 border-border flex items-center justify-center overflow-hidden">
                 {player.avatarUrl ? (
@@ -270,7 +310,6 @@ function PlayerDetailPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Matches Tab */}
               <TabsContent value="matches" className="space-y-6">
                 {recentMatches.length > 0 ? (
                   <div className="space-y-3">
@@ -342,10 +381,8 @@ function PlayerDetailPage() {
                 )}
               </TabsContent>
 
-              {/* Tournaments Tab */}
               <TabsContent value="tournaments" className="space-y-6">
                 <div className="space-y-4">
-                  {/* Role Filter Buttons */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex gap-2">
                       <Button
@@ -445,7 +482,6 @@ function PlayerDetailPage() {
                 </div>
               </TabsContent>
 
-              {/* Statistics Tab */}
               <TabsContent value="stats" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -545,7 +581,6 @@ function PlayerDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Bio Section */}
               {player.bio && (
                 <Card>
                   <CardHeader>
@@ -557,7 +592,6 @@ function PlayerDetailPage() {
                 </Card>
               )}
 
-              {/* Achievements */}
               {achievements.length > 0 && (
                 <Card>
                   <CardHeader>
@@ -577,7 +611,6 @@ function PlayerDetailPage() {
                 </Card>
               )}
 
-              {/* Location Card */}
               {location !== "Location not set" && (
                 <Card>
                   <CardHeader>

@@ -18,6 +18,7 @@ type ExtractResponse = {
 		gameType?: "eight_ball" | "nine_ball" | "ten_ball" | "one_pocket" | "bank_pool" | null;
 		maxPlayers?: number | null;
 		description?: string | null;
+		screenshot?: string | null;
 		rawData?: any;
 	};
 	error?: string;
@@ -40,6 +41,7 @@ export function TournamentUrlImporter({
 		gameType?: "eight_ball" | "nine_ball" | "ten_ball" | "one_pocket" | "bank_pool";
 		playerType?: "singles" | "doubles" | "scotch_doubles" | "teams";
 		maxPlayers?: number;
+		screenshot?: string;
 	}) => void;
 }) {
 	const [url, setUrl] = useState("");
@@ -76,6 +78,7 @@ export function TournamentUrlImporter({
 					gameType: response.data.gameType ?? undefined,
 					maxPlayers: response.data.maxPlayers ?? undefined,
 					description: response.data.description ?? undefined,
+					screenshot: response.data.rawData?.screenshot ?? undefined,
 				});
 
 				toast.success("Tournament information extracted successfully!");

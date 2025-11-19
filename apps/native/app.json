@@ -9,10 +9,10 @@
     "name": "Rackd",
     "slug": "native",
     "version": "1.0.0",
-    "icon": "assets/images/icon.png",
+    "icon": "assets/images/icon-1024.png",
     "ios": {
       "bundleIdentifier": "com.rackd.app",
-      "buildNumber": "2",
+      "buildNumber": "5",
       "associatedDomains": [
         "applinks:rackd.net",
         "applinks:www.rackd.net",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.rackd.app",
-      "versionCode": 2,
+      "versionCode": 5,
       "intentFilters": [
         {
           "action": "VIEW",

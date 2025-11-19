@@ -11,13 +11,13 @@
     "prebuild": "expo prebuild",
     "web": "expo start --web",
     "update-version": "node scripts/update-version.js",
-    "build:ios": "pnpm run update-version && eas build --platform ios --profile production",
-    "build:android": "pnpm run update-version && eas build --platform android --profile production",
-    "build:all": "pnpm run update-version && eas build --platform all --profile production",
+    "build:ios": "pnpm run update-version && npx eas-cli build --platform ios --profile production",
+    "build:android": "pnpm run update-version && npx eas-cli build --platform android --profile production",
+    "build:all": "pnpm run update-version && npx eas-cli build --platform all --profile production",
     "build:ios:local": "expo prebuild && expo run:ios --configuration Release",
     "build:android:local": "expo prebuild && expo run:android --variant release",
-    "submit:ios": "eas submit --platform ios --profile production",
-    "submit:android": "eas submit --platform android --profile production"
+    "submit:ios": "npx eas-cli submit --platform ios --profile production",
+    "submit:android": "npx eas-cli submit --platform android --profile production"
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
@@ -70,6 +70,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/react": "catalog:",
+    "sharp": "^0.34.5",
     "typescript": "catalog:"
   },
   "private": true

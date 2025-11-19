@@ -2,5 +2,76 @@
   command = "cd packages/backend && npx convex deploy --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
   publish = "apps/app/dist/client"
 
+# Function configuration
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["apps/app/dist/**"]
+  external_node_modules = ["@better-auth/expo"]
+
+# Edge Functions for low-latency operations
+[[edge_functions]]
+  path = "/api/auth/*"
+  function = "auth-middleware"
+
+[[edge_functions]]
+  path = "/api/verify/*"
+  function = "verify-middleware"
+
+# Scheduled functions are handled by Convex cron jobs (see packages/backend/convex/crons.ts)
+# Convex provides native scheduling that's more reliable than Netlify scheduled functions
+
+# Deploy contexts for environment-specific configurations
+[context.production]
+  command = "cd packages/backend && npx convex deploy --prod --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  [context.production.environment]
+    NODE_ENV = "production"
+    VITE_ENV = "production"
+
+[context.branch-deploy]
+  command = "cd packages/backend && npx convex deploy --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  [context.branch-deploy.environment]
+    NODE_ENV = "development"
+    VITE_ENV = "staging"
+
+[context.deploy-preview]
+  command = "cd packages/backend && npx convex deploy --cmd 'cd ../../apps/app && turbo run build' --cmd-url-env-var-name VITE_CONVEX_URL"
+  [context.deploy-preview.environment]
+    NODE_ENV = "development"
+    VITE_ENV = "preview"
+
+# Environment variables (declare here for documentation)
+# Actual values should be set in Netlify UI or via CLI
 [build.environment]
   NODE_VERSION = "20"
+  # Convex
+  VITE_CONVEX_URL = "$VITE_CONVEX_URL"
+  EXPO_PUBLIC_CONVEX_URL = "$EXPO_PUBLIC_CONVEX_URL"
+  EXPO_PUBLIC_CONVEX_SITE_URL = "$EXPO_PUBLIC_CONVEX_SITE_URL"
+  CONVEX_DEPLOY_KEY = "$CONVEX_DEPLOY_KEY"
+  
+  # Firecrawl
+  FIRECRAWL_API_KEY = "$FIRECRAWL_API_KEY"
+  
+  # Cloudflare
+  VITE_CLOUDFLARE_TURNSTILE_SITE_KEY = "$VITE_CLOUDFLARE_TURNSTILE_SITE_KEY"
+  CLOUDFLARE_TURNSTILE_SECRET_KEY = "$CLOUDFLARE_TURNSTILE_SECRET_KEY"
+  CLOUDFLARE_ACCOUNT_ID = "$CLOUDFLARE_ACCOUNT_ID"
+  CLOUDFLARE_API_TOKEN = "$CLOUDFLARE_API_TOKEN"
+  CLOUDFLARE_IMAGES_ACCOUNT_HASH = "$CLOUDFLARE_IMAGES_ACCOUNT_HASH"
+  
+  # R2 Storage
+  R2_ACCESS_KEY_ID = "$R2_ACCESS_KEY_ID"
+  R2_SECRET_ACCESS_KEY = "$R2_SECRET_ACCESS_KEY"
+  R2_BUCKET_NAME = "$R2_BUCKET_NAME"
+  R2_PUBLIC_URL = "$R2_PUBLIC_URL"
+  
+  # Sentry
+  VITE_SENTRY_DSN = "$VITE_SENTRY_DSN"
+  VITE_SENTRY_RELEASE = "$VITE_SENTRY_RELEASE"
+  SENTRY_AUTH_TOKEN = "$SENTRY_AUTH_TOKEN"
+
+# Asset optimization
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+# Redirects and rewrites are handled via _redirects file in public/

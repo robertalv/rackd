@@ -4,9 +4,41 @@ import { getCurrentUserIdOrThrow } from "./lib/utils";
 import { CounterHelpers } from "./counters";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { check } from "./autumn";
+import { attach, check, track } from "./autumn";
+import type { DatabaseReader } from "./_generated/server";
 
-// Get all tournaments
+async function isOrganizerOrManager(
+  ctx: { db: DatabaseReader },
+  tournamentId: Id<"tournaments">,
+  userId: Id<"users">
+): Promise<{ isAuthorized: boolean; isOrganizer: boolean; isManager: boolean }> {
+  const tournament = await ctx.db.get(tournamentId);
+  if (!tournament) {
+    throw new Error("Tournament not found");
+  }
+
+  const isOrganizer = tournament.organizerId === userId;
+  
+  if (isOrganizer) {
+    return { isAuthorized: true, isOrganizer: true, isManager: false };
+  }
+
+  const managers = await ctx.db
+    .query("tournamentManagers")
+    .withIndex("by_tournament", (q) => q.eq("tournamentId", tournamentId))
+    .collect();
+  
+  const isManager = managers.some(
+    (m) => m.userId === userId && m.accepted && (m.role === "admin" || m.role === "manager")
+  );
+
+  return { 
+    isAuthorized: isManager, 
+    isOrganizer: false, 
+    isManager 
+  };
+}
+
 export const getAllTournaments = query({
   args: { 
     query: v.optional(v.string()),
@@ -207,7 +239,6 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdOrThrow(ctx);
 
-    // Check tournament limit for free users (max 3 tournaments)
     const unlimitedCheck = await check(ctx, {
       featureId: "unlimited_tournaments",
     });
@@ -286,6 +317,16 @@ export const create = mutation({
       isPublic: true,
       isFeatured: false,
       updatedAt: Date.now(),
+    });
+
+    await track(ctx, {
+      featureId: "tournament_creation",
+      quantity: 1,
+    });
+
+    await attach(ctx, {
+      entityId: tournamentId,
+      entityType: "tournament",
     });
 
     if (args.date > Date.now()) {
@@ -467,6 +508,84 @@ export const getById = query({
   },
 });
 
+// Delete tournament and all related data
+export const deleteTournament = mutation({
+  args: {
+    tournamentId: v.id("tournaments"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Check if user is organizer or manager
+    const { isAuthorized } = await isOrganizerOrManager(ctx, args.tournamentId, userId);
+    if (!isAuthorized) {
+      throw new Error("Only tournament organizers and managers can delete tournaments");
+    }
+
+    // Delete all related data in the correct order
+
+    // 1. Delete tournament registrations
+    const registrations = await ctx.db
+      .query("tournamentRegistrations")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+    for (const registration of registrations) {
+      await ctx.db.delete(registration._id);
+    }
+
+    // 2. Delete matches
+    const matches = await ctx.db
+      .query("matches")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+    for (const match of matches) {
+      await ctx.db.delete(match._id);
+    }
+
+    // 3. Delete tournament managers
+    const managers = await ctx.db
+      .query("tournamentManagers")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+    for (const manager of managers) {
+      await ctx.db.delete(manager._id);
+    }
+
+    // 4. Delete tables associated with the tournament
+    const tables = await ctx.db
+      .query("tables")
+      .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+      .collect();
+    for (const table of tables) {
+      await ctx.db.delete(table._id);
+    }
+
+    // 5. Delete notifications related to the tournament
+    const notifications = await ctx.db
+      .query("notifications")
+      .filter((q) => q.eq(q.field("tournamentId"), args.tournamentId))
+      .collect();
+    for (const notification of notifications) {
+      await ctx.db.delete(notification._id);
+    }
+
+    // 6. Delete posts related to the tournament (optional - posts might want to keep references)
+    // Uncomment if you want to delete posts when tournament is deleted
+    // const posts = await ctx.db
+    //   .query("posts")
+    //   .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+    //   .collect();
+    // for (const post of posts) {
+    //   await ctx.db.delete(post._id);
+    // }
+
+    // 7. Finally, delete the tournament itself
+    await ctx.db.delete(args.tournamentId);
+
+    return { success: true };
+  },
+});
+
 // Update tournament
 export const update = mutation({
   args: {
@@ -525,21 +644,9 @@ export const update = mutation({
     }
 
     // Check if user is organizer or manager
-    const isOrganizer = tournament.organizerId === userId;
-    if (!isOrganizer) {
-      // Check if user is a manager
-      const managers = await ctx.db
-        .query("tournamentManagers")
-        .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
-        .collect();
-      
-      const isManager = managers.some(
-        (m) => m.userId === userId && m.accepted && m.role === "admin"
-      );
-
-      if (!isManager) {
-        throw new Error("Only tournament organizers and admins can update tournaments");
-      }
+    const { isAuthorized } = await isOrganizerOrManager(ctx, args.tournamentId, userId);
+    if (!isAuthorized) {
+      throw new Error("Only tournament organizers and managers can update tournaments");
     }
 
     const { tournamentId, ...updates } = args;
@@ -747,8 +854,10 @@ export const addTables = mutation({
 			throw new Error("Tournament not found");
 		}
 
-		if (tournament.organizerId !== userId) {
-			throw new Error("Only the tournament organizer can add tables");
+		// Check if user is organizer or manager
+		const { isAuthorized } = await isOrganizerOrManager(ctx, args.tournamentId, userId);
+		if (!isAuthorized) {
+			throw new Error("Only tournament organizers and managers can add tables");
 		}
 
 		// Get existing tables to check for conflicts
@@ -814,9 +923,20 @@ export const deleteTable = mutation({
 			throw new Error("Table not found");
 		}
 
-		// Verify user has permission (must be organizer)
-		if (table.organizerId !== userId) {
-			throw new Error("Only the tournament organizer can delete tables");
+		if (!table.tournamentId) {
+			throw new Error("Table is not associated with a tournament");
+		}
+
+		const tournamentId = table.tournamentId;
+		const tournament = await ctx.db.get(tournamentId);
+		if (!tournament) {
+			throw new Error("Tournament not found");
+		}
+
+		// Check if user is organizer or manager
+		const { isAuthorized } = await isOrganizerOrManager(ctx, tournamentId, userId);
+		if (!isAuthorized) {
+			throw new Error("Only tournament organizers and managers can delete tables");
 		}
 
 		// Check if table is currently in use
@@ -886,9 +1006,21 @@ export const updateTable = mutation({
 			throw new Error("Table not found");
 		}
 
-		// Verify user has permission (must be organizer)
-		if (table.organizerId !== userId) {
-			throw new Error("Only the tournament organizer can update tables");
+		// Get tournament to check permissions
+		if (!table.tournamentId) {
+			throw new Error("Table is not associated with a tournament");
+		}
+
+		const tournamentId = table.tournamentId;
+		const tournament = await ctx.db.get(tournamentId);
+		if (!tournament) {
+			throw new Error("Tournament not found");
+		}
+
+		// Check if user is organizer or manager
+		const { isAuthorized } = await isOrganizerOrManager(ctx, tournamentId, userId);
+		if (!isAuthorized) {
+			throw new Error("Only tournament organizers and managers can update tables");
 		}
 
 		// Build update object with only provided fields
@@ -922,6 +1054,14 @@ export const removePlayer = mutation({
     playerId: v.id("players"),
   },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Check if user is organizer or manager
+    const { isAuthorized } = await isOrganizerOrManager(ctx, args.tournamentId, userId);
+    if (!isAuthorized) {
+      throw new Error("Only tournament organizers and managers can remove players");
+    }
+
     const allRegistrations = await ctx.db
       .query("tournamentRegistrations")
       .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
@@ -947,6 +1087,14 @@ export const checkInPlayer = mutation({
     playerId: v.id("players"),
   },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdOrThrow(ctx);
+
+    // Check if user is organizer or manager
+    const { isAuthorized } = await isOrganizerOrManager(ctx, args.tournamentId, userId);
+    if (!isAuthorized) {
+      throw new Error("Only tournament organizers and managers can check in players");
+    }
+
     const allRegistrations = await ctx.db
       .query("tournamentRegistrations")
       .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))

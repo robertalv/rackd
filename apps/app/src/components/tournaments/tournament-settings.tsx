@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import type { Id } from "@rackd/backend/convex/_generated/dataModel";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@rackd/ui/components/button";
 import { Input } from "@rackd/ui/components/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@rackd/ui/components/card";
@@ -14,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@rackd/ui/components/textarea";
 import { Calendar } from "@rackd/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@rackd/ui/components/popover";
-import { CalendarIcon, Clock, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@rackd/ui/components/dialog";
+import { CalendarIcon, Clock, Save, Trash2 } from "lucide-react";
 import { cn } from "@rackd/ui/lib/utils";
 import { VenueSearch } from "../venues/venue-search";
 import { TournamentFlyerUpload } from "../file-upload/tournament-flyer-upload";
@@ -45,11 +47,15 @@ type Props = {
 };
 
 export function TournamentSettings({ tournamentId }: Props) {
+  const navigate = useNavigate();
   const tournament = useQuery(api.tournaments.getById, { id: tournamentId });
   const update = useMutation(api.tournaments.update);
+  const deleteTournament = useMutation(api.tournaments.deleteTournament);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("09:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { register, handleSubmit, watch, setValue, reset } = useForm<FormData>({
     defaultValues: {
@@ -167,6 +173,22 @@ export function TournamentSettings({ tournamentId }: Props) {
       month: "short",
       day: "numeric"
     });
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteTournament({ tournamentId });
+      alert("Tournament deleted successfully");
+      // Navigate back to tournaments list
+      navigate({ to: "/tournaments" });
+    } catch (error) {
+      console.error("Failed to delete tournament:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete tournament. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
   };
 
   if (!tournament) {
@@ -433,11 +455,81 @@ export function TournamentSettings({ tournamentId }: Props) {
               </Button>
             </div>
           </form>
+
+          {/* Danger Zone */}
+          <div className="mt-8 pt-8 border-t">
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Delete Tournament</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Once you delete a tournament, there is no going back. This will permanently delete
+                      the tournament, all registrations, matches, and related data.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Tournament
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Tournament</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{tournament?.name}"? This action cannot be undone.
+              <br />
+              <br />
+              This will permanently delete:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>All tournament registrations</li>
+                <li>All matches and bracket data</li>
+                <li>All tournament managers</li>
+                <li>All tables associated with the tournament</li>
+                <li>All related notifications</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Tournament"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+
+
 
 
 

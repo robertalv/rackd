@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -12,6 +12,7 @@ import { Textarea } from "@rackd/ui/components/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@rackd/ui/components/dialog";
 import { Plus, X, Facebook, Instagram, Twitter, Globe, Youtube, Linkedin } from "lucide-react";
 import { VenueImageUpload } from "./venue-image-upload";
+import { VenueUrlImporter } from "./venue-url-importer";
 
 type VenueFormData = {
   name: string;
@@ -46,6 +47,36 @@ export function AddVenueModal({ open, onOpenChange, onVenueAdded }: AddVenueModa
     control,
     name: "socialLinks"
   });
+
+  const handleExtractInfo = useCallback((info: {
+    name?: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    region?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    operatingHours?: string;
+    socialLinks?: { platform: string; url: string; icon: string }[];
+    numberOfTables?: number;
+  }) => {
+    if (info.name) setValue("name", info.name);
+    if (info.description) setValue("description", info.description);
+    if (info.address) setValue("address", info.address);
+    if (info.phone) setValue("phone", info.phone);
+    if (info.email) setValue("email", info.email);
+    if (info.website) setValue("website", info.website);
+    if (info.operatingHours) setValue("operatingHours", info.operatingHours);
+    if (info.socialLinks && info.socialLinks.length > 0) {
+      // Clear existing and add new social links
+      fields.forEach((_, index) => remove(index));
+      info.socialLinks.forEach(link => {
+        append({ platform: link.platform, url: link.url, icon: link.icon || "globe" });
+      });
+    }
+  }, [setValue, fields, append, remove]);
 
   const onSubmit = async (data: VenueFormData) => {
     try {
@@ -88,6 +119,9 @@ export function AddVenueModal({ open, onOpenChange, onVenueAdded }: AddVenueModa
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* URL Importer */}
+          <VenueUrlImporter onExtract={handleExtractInfo} />
+          
           <div className="space-y-2">
             <Label htmlFor="venue-name">Venue Name *</Label>
             <Input
@@ -269,6 +303,9 @@ export function AddVenueModal({ open, onOpenChange, onVenueAdded }: AddVenueModa
     </Dialog>
   );
 }
+
+
+
 
 
 

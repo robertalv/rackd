@@ -608,15 +608,8 @@ export function TournamentBracket({ matches, tournamentType, tournamentId, tourn
     };
   }, [bracketData]);
 
-  if (!bracketData) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        No bracket data available. Start the tournament to generate the bracket.
-      </div>
-    );
-  }
-
   // Calculate bracket size for placement labels
+  // MUST be called before any early returns to follow Rules of Hooks
   const bracketSize = useMemo(() => {
     if (!matches || matches.length === 0) return 16;
     const playersInMatches = new Set(
@@ -625,6 +618,14 @@ export function TournamentBracket({ matches, tournamentType, tournamentId, tourn
     const numPlayers = playerCount?.checkedIn || playersInMatches.size || 0;
     return Math.max(16, Math.pow(2, Math.ceil(Math.log2(Math.max(numPlayers, 2)))));
   }, [matches, playerCount]);
+
+  if (!bracketData) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        No bracket data available. Start the tournament to generate the bracket.
+      </div>
+    );
+  }
 
 
   if (bracketData.type === "single") {

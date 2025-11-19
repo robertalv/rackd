@@ -107,7 +107,7 @@ export default function HeroSection() {
                                     ...transitionVariants,
                                 }}
                                 className="mt-12">
-                                <form
+                                {/* <form
                                     onSubmit={handleSubmit}
                                     className="mx-auto max-w-sm">
                                     <div className="bg-background has-[input:focus]:ring-muted relative grid grid-cols-[1fr_auto] items-center rounded-[calc(var(--radius)+0.5rem)] border pr-2 shadow shadow-zinc-950/5 has-[input:focus]:ring-2">
@@ -122,7 +122,7 @@ export default function HeroSection() {
                                             required
                                         />
 
-                                        {/* <div className="md:pr-1.5 lg:pr-0">
+                                        <div className="md:pr-1.5 lg:pr-0">
                                             <Button
                                                 aria-label="submit"
                                                 size="sm"
@@ -135,9 +135,9 @@ export default function HeroSection() {
                                                     strokeWidth={2}
                                                 />
                                             </Button>
-                                        </div> */}
+                                        </div>
                                     </div>
-                                </form>
+                                </form> */}
 
                                 <div
                                     aria-hidden

@@ -11,10 +11,12 @@ if (typeof window !== "undefined") {
 	initSentry();
 }
 
+const CONVEX_URL = import.meta.env.VITE_CONVEX_URL;
+
 export function getRouter() {
-	const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!;
 	if (!CONVEX_URL) {
 		console.error("missing envar VITE_CONVEX_URL");
+		throw new Error("VITE_CONVEX_URL environment variable is required");
 	}
 	const convex = new ConvexReactClient(CONVEX_URL, {
 		unsavedChangesWarning: false,

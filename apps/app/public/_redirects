@@ -1,0 +1,16 @@
+# Netlify Redirects and Rewrites
+# Documentation: https://docs.netlify.com/routing/redirects/
+
+# API routes - proxy to serverless functions
+/api/* /.netlify/functions/:splat 200
+
+# SPA fallback - serve index.html for client-side routing
+/* /index.html 200
+
+# SEO redirects (if needed)
+# /old-tournaments /tournaments 301
+# /old-venues /venues 301
+
+# Force HTTPS (handled by Netlify by default, but explicit is better)
+# http://* https://:splat 301
+

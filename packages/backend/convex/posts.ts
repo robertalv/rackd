@@ -4,8 +4,8 @@ import { CounterHelpers } from "./counters";
 import { getCurrentUserId, getCurrentUserIdOrThrow, getCurrentUser } from "./lib/utils";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { check, track, attach } from "./autumn";
 
-// Create post
 export const create = mutation({
   args: {
     content: v.string(),
@@ -17,6 +17,28 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdOrThrow(ctx);
+
+    const unlimitedPostsCheck = await check(ctx, {
+      featureId: "unlimited_posts",
+    });
+
+    if (!unlimitedPostsCheck.data?.allowed) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTimestamp = today.getTime();
+
+      const postsToday = await ctx.db
+        .query("posts")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .filter((q) => q.gte(q.field("_creationTime"), todayTimestamp))
+        .collect();
+
+      if (postsToday.length >= 10) {
+        throw new Error(
+          "Free plan allows up to 10 posts per day. Please upgrade for unlimited posts."
+        );
+      }
+    }
 
     // Verify Turnstile token if provided
     if (args.turnstileToken) {
@@ -67,10 +89,18 @@ export const create = mutation({
       isPublic: true,
     });
 
-    // Update user post count using sharded counter
     await CounterHelpers.incrementUserPosts(ctx, userId);
 
-    // Extract hashtags from post content
+    await track(ctx, {
+      featureId: "post_creation",
+      quantity: 1,
+    });
+
+    await attach(ctx, {
+      entityId: postId,
+      entityType: "post",
+    });
+
     const hashtagRegex = /#([A-Za-z0-9_]+)/g;
     const hashtags = [];
     let hashtagMatch;
@@ -90,7 +120,6 @@ export const create = mutation({
       const now = Date.now();
       
       for (const hashtag of hashtags) {
-        // Find or create hashtag
         let existingHashtag = await ctx.db
           .query("hashtags")
           .withIndex("by_tag", q => q.eq("tag", hashtag.normalized))
@@ -99,17 +128,14 @@ export const create = mutation({
         let hashtagId;
         
         if (existingHashtag) {
-          // Update existing hashtag stats
           hashtagId = existingHashtag._id;
           await ctx.db.patch(hashtagId, {
             useCount: existingHashtag.useCount + 1,
             lastUsed: now,
-            // Keep the original display casing if it was more readable
             displayTag: hashtag.original.length > existingHashtag.displayTag.length ? 
               hashtag.original : existingHashtag.displayTag
           });
         } else {
-          // Create new hashtag
           hashtagId = await ctx.db.insert("hashtags", {
             tag: hashtag.normalized,
             displayTag: hashtag.original,
@@ -119,7 +145,6 @@ export const create = mutation({
           });
         }
         
-        // Link hashtag to post
         await ctx.db.insert("postHashtags", {
           postId,
           hashtagId,
@@ -132,7 +157,6 @@ export const create = mutation({
   },
 });
 
-// Get user feed (posts from followed users)
 export const getFeed = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -140,16 +164,14 @@ export const getFeed = query({
     if (!user) return [];
     const userId = user._id;
 
-    // Get users I follow
     const follows = await ctx.db
       .query("follows")
       .withIndex("by_follower", q => q.eq("followerId", userId))
       .collect();
 
     const followingIds = follows.map(f => f.followingId);
-    followingIds.push(userId); // Include own posts
+    followingIds.push(userId);
 
-    // Get posts from followed users
     const allPosts = await ctx.db
       .query("posts")
       .order("desc")
@@ -159,7 +181,6 @@ export const getFeed = query({
       .filter(p => followingIds.includes(p.userId))
       .slice(0, args.limit || 50);
 
-    // Populate with user, tournament, and venue data
     return await Promise.all(
       feedPosts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
@@ -169,7 +190,6 @@ export const getFeed = query({
         if (post.tournamentId) {
           tournament = await ctx.db.get(post.tournamentId);
           if (tournament) {
-            // Get venue info from tournament if available
             if (tournament.venueId) {
               venue = await ctx.db.get(tournament.venueId);
             }
@@ -185,7 +205,6 @@ export const getFeed = query({
           }
         }
         
-        // Get venue from post if not already set from tournament
         if (post.venueId && !venue) {
           venue = await ctx.db.get(post.venueId);
         }
@@ -207,7 +226,6 @@ export const getFeed = query({
   },
 });
 
-// Get posts by user
 export const getByUser = query({
   args: { 
     userId: v.id("users"),
@@ -220,7 +238,6 @@ export const getByUser = query({
       .order("desc")
       .take(args.limit || 50);
 
-    // Populate with user, tournament, and venue data
     return await Promise.all(
       posts.map(async (post) => {
         const user = await ctx.db.get(post.userId);
@@ -230,7 +247,6 @@ export const getByUser = query({
         if (post.tournamentId) {
           tournament = await ctx.db.get(post.tournamentId);
           if (tournament) {
-            // Get venue info from tournament if available
             if (tournament.venueId) {
               venue = await ctx.db.get(tournament.venueId);
             }
@@ -246,7 +262,6 @@ export const getByUser = query({
           }
         }
         
-        // Get venue from post if not already set from tournament
         if (post.venueId && !venue) {
           venue = await ctx.db.get(post.venueId);
         }
@@ -268,7 +283,6 @@ export const getByUser = query({
   },
 });
 
-// Get single post
 export const getPost = query({
   args: { postId: v.id("posts") },
   handler: async (ctx, args) => {
@@ -282,7 +296,6 @@ export const getPost = query({
     if (post.tournamentId) {
       tournament = await ctx.db.get(post.tournamentId);
       if (tournament) {
-        // Get venue info from tournament if available
         if (tournament.venueId) {
           venue = await ctx.db.get(tournament.venueId);
         }
@@ -298,7 +311,6 @@ export const getPost = query({
       }
     }
     
-    // Get venue from post if not already set from tournament
     if (post.venueId && !venue) {
       venue = await ctx.db.get(post.venueId);
     }

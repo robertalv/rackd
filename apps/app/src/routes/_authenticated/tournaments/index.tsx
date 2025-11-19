@@ -1,7 +1,7 @@
 "use client";
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { Button } from "@rackd/ui/components/button";
@@ -12,9 +12,27 @@ import { TournamentPageCard } from "@/components/tournaments/tournament-page-car
 import { TournamentFilters } from "@/components/tournaments/tournament-filters";
 import type { TournamentStatus } from "@/lib/tournament-utils";
 import { Icon, Add01Icon, FilterIcon, ChampionIcon } from "@rackd/ui/icons";
+import { callConvexQuery } from "@/lib/convex-server";
+import type { RouterAppContext } from "@/routes/__root";
+import Loader from "@/components/loader";
 
 export const Route = createFileRoute("/_authenticated/tournaments/")({
+  loader: async ({ context }) => {
+    const { queryClient, convexQueryClient } = context as RouterAppContext;
+    
+    const tournaments = await callConvexQuery(
+      queryClient,
+      convexQueryClient,
+      api.tournaments.list,
+      {}
+    );
+    
+    return {
+      initialTournaments: tournaments,
+    };
+  },
   component: TournamentsPage,
+  pendingComponent: () => <Loader />,
 });
 
 type GameType = "eight_ball" | "nine_ball" | "ten_ball" | "one_pocket" | "bank_pool" | "all";
@@ -32,15 +50,12 @@ function TournamentsPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch all tournaments for counts
   const allTournaments = useQuery(api.tournaments.list, {});
   
-  // Fetch filtered tournaments
   const tournaments = useQuery(api.tournaments.list, {
     status: statusFilter === "all" ? undefined : statusFilter,
   });
 
-  // Calculate status counts from all tournaments
   const statusCounts = useMemo(() => {
     if (!allTournaments) return undefined;
     
@@ -53,13 +68,11 @@ function TournamentsPage() {
     };
   }, [allTournaments]);
 
-  // Filter tournaments by all criteria
   const filteredTournaments = useMemo(() => {
     if (!tournaments) return [];
     
     let filtered = tournaments;
     
-    // Search filter
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
       filtered = filtered.filter((tournament: any) => {
@@ -72,24 +85,20 @@ function TournamentsPage() {
       });
     }
     
-    // Game type filter
     if (gameTypeFilter !== "all") {
       filtered = filtered.filter((tournament: any) => tournament.gameType === gameTypeFilter);
     }
     
-    // Tournament type filter
     if (tournamentTypeFilter !== "all") {
       filtered = filtered.filter((tournament: any) => tournament.type === tournamentTypeFilter);
     }
     
-    // Entry fee filter
     if (entryFeeFilter === "free") {
       filtered = filtered.filter((tournament: any) => !tournament.entryFee || tournament.entryFee === 0);
     } else if (entryFeeFilter === "paid") {
       filtered = filtered.filter((tournament: any) => tournament.entryFee && tournament.entryFee > 0);
     }
     
-    // Featured filter
     if (showFeaturedOnly) {
       filtered = filtered.filter((tournament: any) => tournament.isFeatured === true);
     }
@@ -190,14 +199,22 @@ function TournamentsPage() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Tournament Cards Grid */}
-            {tournaments === undefined ? (
+            <Suspense fallback={
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <Icon icon={ChampionIcon} className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
                   <p className="text-muted-foreground">Loading tournaments...</p>
                 </div>
               </div>
-            ) : filteredTournaments.length > 0 ? (
+            }>
+              {tournaments === undefined ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Icon icon={ChampionIcon} className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                    <p className="text-muted-foreground">Loading tournaments...</p>
+                  </div>
+                </div>
+              ) : filteredTournaments.length > 0 ? (
               <div className={viewMode === "grid" 
                 ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
                 : "space-y-4"
@@ -220,7 +237,8 @@ function TournamentsPage() {
                     : "Try adjusting your filters"}
                 </p>
               </div>
-            )}
+              )}
+            </Suspense>
           </div>
         </div>
       </div>

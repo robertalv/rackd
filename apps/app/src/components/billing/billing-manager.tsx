@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useCustomer, CheckoutDialog } from "autumn-js/react";
 import { useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
@@ -12,25 +11,48 @@ import { Separator } from "@rackd/ui/components/separator";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 export function BillingManager() {
-  const { customer, checkout, openBillingPortal, isLoading } = useCustomer();
+  const { customer, checkout, openBillingPortal } = useCustomer();
   const currentUser = useCurrentUser();
   
-  // Get tournament count for the current user
-  const tournaments = useQuery(
-    api.tournaments.getByOrganizer,
-    currentUser?.user?._id ? { userId: currentUser.user._id } : "skip"
+  const usageStats = useQuery(
+    api.usage.getUsageStats,
+    currentUser?.user?._id ? {} : "skip"
   );
 
-  const tournamentCount = tournaments?.length || 0;
+  const planLimits = useQuery(
+    api.usage.getPlanLimits,
+    currentUser?.user?._id ? {} : "skip"
+  );
+
+  const tournamentCount = usageStats?.localCounts?.tournaments || 0;
+  const venueCount = usageStats?.localCounts?.venues || 0;
+  const postsToday = usageStats?.localCounts?.postsToday || 0;
+
   const isProPlan = customer?.products?.find((p: any) => p.id === "player")?.status === "active" || 
                     customer?.products?.find((p: any) => p.id === "player")?.status === "trialing";
-  const hasUnlimitedTournaments = customer?.products?.some((p: any) => 
-    p.id === "player" && (p.status === "active" || p.status === "trialing")
-  );
+  
+  const hasUnlimitedTournaments = isProPlan || false;
+  const hasUnlimitedVenues = isProPlan || false;
+  const hasUnlimitedPosts = isProPlan || false;
 
-  const freePlanLimit = 3;
-  const usagePercentage = hasUnlimitedTournaments ? 0 : (tournamentCount / freePlanLimit) * 100;
-  const remainingTournaments = hasUnlimitedTournaments ? null : Math.max(0, freePlanLimit - tournamentCount);
+  const playerProduct = customer?.products?.find((p: any) => p.id === "player");
+  const monthlyPrice = (playerProduct as any)?.price?.amount 
+    ? `$${(((playerProduct as any).price.amount) / 100).toFixed(2)}/month`
+    : (playerProduct as any)?.amount
+    ? `$${(((playerProduct as any).amount) / 100).toFixed(2)}/month`
+    : "$5/month";
+
+  const tournamentLimit = planLimits?.tournaments || 3;
+  const venueLimit = planLimits?.venues || 1;
+  const postsPerDayLimit = planLimits?.postsPerDay || 10;
+
+  const tournamentUsagePercentage = hasUnlimitedTournaments ? 0 : (tournamentCount / tournamentLimit) * 100;
+  const venueUsagePercentage = hasUnlimitedVenues ? 0 : (venueCount / venueLimit) * 100;
+  const postsUsagePercentage = hasUnlimitedPosts ? 0 : (postsToday / postsPerDayLimit) * 100;
+
+  const remainingTournaments = hasUnlimitedTournaments ? null : Math.max(0, tournamentLimit - tournamentCount);
+  const remainingVenues = hasUnlimitedVenues ? null : Math.max(0, venueLimit - venueCount);
+  const remainingPosts = hasUnlimitedPosts ? null : Math.max(0, postsPerDayLimit - postsToday);
 
   const handleUpgrade = async () => {
     await checkout({
@@ -45,17 +67,8 @@ export function BillingManager() {
     });
   };
 
-  // if (isLoading || !customer) {
-  //   return (
-  //     <div className="flex flex-col gap-4">
-  //       <p className="text-sm text-muted-foreground">Loading billing information...</p>
-  //     </div>
-  //   );
-  // }
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Current Plan Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -94,7 +107,6 @@ export function BillingManager() {
         </CardContent>
       </Card>
 
-      {/* Tournament Usage Card */}
       <Card>
         <CardHeader>
           <CardTitle>Tournament Usage</CardTitle>
@@ -118,10 +130,10 @@ export function BillingManager() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tournaments created</span>
                   <span className="font-medium">
-                    {tournamentCount} / {freePlanLimit}
+                    {tournamentCount} / {tournamentLimit}
                   </span>
                 </div>
-                <Progress value={usagePercentage} className="h-2" />
+                <Progress value={tournamentUsagePercentage} className="h-2" />
               </div>
               {remainingTournaments !== null && (
                 <div className="flex items-center gap-2 text-sm">
@@ -137,12 +149,57 @@ export function BillingManager() {
               )}
             </>
           )}
+          
+          <Separator />
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Venues created</span>
+              <span className="font-medium">
+                {venueCount} / {hasUnlimitedVenues ? "∞" : venueLimit}
+              </span>
+            </div>
+            {!hasUnlimitedVenues && (
+              <>
+                <Progress value={venueUsagePercentage} className="h-2" />
+                {remainingVenues !== null && remainingVenues < venueLimit && (
+                  <div className="text-xs text-muted-foreground">
+                    {remainingVenues === 0
+                      ? "Venue limit reached. Upgrade for unlimited venues."
+                      : `${remainingVenues} venue${remainingVenues !== 1 ? "s" : ""} remaining`}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Posts today</span>
+              <span className="font-medium">
+                {postsToday} / {hasUnlimitedPosts ? "∞" : postsPerDayLimit}
+              </span>
+            </div>
+            {!hasUnlimitedPosts && (
+              <>
+                <Progress value={postsUsagePercentage} className="h-2" />
+                {remainingPosts !== null && remainingPosts < postsPerDayLimit && (
+                  <div className="text-xs text-muted-foreground">
+                    {remainingPosts === 0
+                      ? "Daily post limit reached. Upgrade for unlimited posts."
+                      : `${remainingPosts} post${remainingPosts !== 1 ? "s" : ""} remaining today`}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       <Separator />
 
-      {/* Plan Features */}
       <Card>
         <CardHeader>
           <CardTitle>Plan Features</CardTitle>
@@ -193,11 +250,10 @@ export function BillingManager() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
       <div className="flex flex-col gap-3">
         {!isProPlan ? (
           <Button onClick={handleUpgrade} className="w-full">
-            Upgrade to Player Plan - $5/month
+            Upgrade to Player Plan - {monthlyPrice}
           </Button>
         ) : (
           <Button onClick={handleManageBilling} variant="outline" className="w-full">

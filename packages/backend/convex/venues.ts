@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { CounterHelpers } from "./counters";
+import { check, track, attach } from "./autumn";
 import { getCurrentUser, getCurrentUserOrThrow } from "./lib/utils";
 
 // Query: Search venues
@@ -203,6 +204,23 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const dbUser = await getCurrentUserOrThrow(ctx);
 
+    const unlimitedVenuesCheck = await check(ctx, {
+      featureId: "unlimited_venues",
+    });
+
+    if (!unlimitedVenuesCheck.data?.allowed) {
+      const existingVenues = await ctx.db
+        .query("venues")
+        .withIndex("by_organizer", (q) => q.eq("organizerId", dbUser._id))
+        .collect();
+
+      if (existingVenues.length >= 1) {
+        throw new Error(
+          "Free plan allows up to 1 venue. Please upgrade to create unlimited venues."
+        );
+      }
+    }
+
     const venueId = await ctx.db.insert("venues", {
       ...args,
       organizerId: dbUser._id,
@@ -216,6 +234,18 @@ export const create = mutation({
 
     // Increment total venue count using sharded counter
     await CounterHelpers.incrementVenueCount(ctx);
+
+    // Track venue creation usage
+    await track(ctx, {
+      featureId: "venue_creation",
+      quantity: 1,
+    });
+
+    // Attach venue to customer billing
+    await attach(ctx, {
+      entityId: venueId,
+      entityType: "venue",
+    });
 
     return venueId;
   },

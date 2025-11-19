@@ -3,6 +3,7 @@ import { Autumn } from "@useautumn/convex";
 import { getCurrentUser } from "./lib/utils";
 import { api } from "./_generated/api";
 import type { ActionCtx, QueryCtx, MutationCtx } from "./_generated/server";
+import { action } from "./_generated/server";
 
 const autumnSecretKey = process.env.AUTUMN_SECRET_KEY;
 const autumnPublishableKey = process.env.AUTUMN_PUBLISHABLE_KEY;
@@ -82,117 +83,69 @@ if (autumnSecretKey || autumnPublishableKey) {
   );
 }
 
-// No-op implementations when Autumn is not configured
-const noOpCheck = async (_ctx: any, _options?: any) => ({
-  data: { allowed: false }, // Default to not allowed (free plan limits apply)
-});
+// Export functions that can be called with ctx from mutations/queries/actions
+// and also work as Convex actions for client use
+// When Autumn is configured, export directly from autumn.api() (cast to any to allow calling)
+// When not configured, export no-op Convex actions
+export const check = autumnApi?.check 
+  ? (autumnApi.check as any)
+  : action(async (_ctx: ActionCtx, _options?: any) => ({
+      data: { allowed: false },
+    }));
 
-const noOpAsync = async () => ({});
-const noOpVoid = async () => {};
+export const track = autumnApi?.track
+  ? (autumnApi.track as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => {});
 
-// Wrapper functions to handle both RegisteredAction and no-op cases
-export const check = async (ctx: any, options?: any) => {
-  if (autumnApi?.check) {
-    return await (autumnApi.check as any)(ctx, options);
-  }
-  return noOpCheck(ctx, options);
-};
+export const cancel = autumnApi?.cancel
+  ? (autumnApi.cancel as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => {});
 
-export const track = async (...args: any[]) => {
-  if (autumnApi?.track) {
-    return await (autumnApi.track as any)(...args);
-  }
-  return noOpVoid();
-};
+export const query = autumnApi?.query
+  ? (autumnApi.query as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const cancel = async (...args: any[]) => {
-  if (autumnApi?.cancel) {
-    return await (autumnApi.cancel as any)(...args);
-  }
-  return noOpVoid();
-};
+export const attach = autumnApi?.attach
+  ? (autumnApi.attach as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => {});
 
-export const query = async (...args: any[]) => {
-  if (autumnApi?.query) {
-    return await (autumnApi.query as any)(...args);
-  }
-  return noOpAsync();
-};
+export const checkout = autumnApi?.checkout
+  ? (autumnApi.checkout as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const attach = async (...args: any[]) => {
-  if (autumnApi?.attach) {
-    return await (autumnApi.attach as any)(...args);
-  }
-  return noOpVoid();
-};
+export const usage = autumnApi?.usage
+  ? (autumnApi.usage as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const checkout = async (...args: any[]) => {
-  if (autumnApi?.checkout) {
-    return await (autumnApi.checkout as any)(...args);
-  }
-  return noOpAsync();
-};
+export const setupPayment = autumnApi?.setupPayment
+  ? (autumnApi.setupPayment as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const usage = async (...args: any[]) => {
-  if (autumnApi?.usage) {
-    return await (autumnApi.usage as any)(...args);
-  }
-  return noOpAsync();
-};
+export const createCustomer = autumnApi?.createCustomer
+  ? (autumnApi.createCustomer as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const setupPayment = async (...args: any[]) => {
-  if (autumnApi?.setupPayment) {
-    return await (autumnApi.setupPayment as any)(...args);
-  }
-  return noOpAsync();
-};
+export const listProducts = autumnApi?.listProducts
+  ? (autumnApi.listProducts as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const createCustomer = async (...args: any[]) => {
-  if (autumnApi?.createCustomer) {
-    return await (autumnApi.createCustomer as any)(...args);
-  }
-  return noOpAsync();
-};
+export const billingPortal = autumnApi?.billingPortal
+  ? (autumnApi.billingPortal as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const listProducts = async (...args: any[]) => {
-  if (autumnApi?.listProducts) {
-    return await (autumnApi.listProducts as any)(...args);
-  }
-  return noOpAsync();
-};
+export const createReferralCode = autumnApi?.createReferralCode
+  ? (autumnApi.createReferralCode as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const billingPortal = async (...args: any[]) => {
-  if (autumnApi?.billingPortal) {
-    return await (autumnApi.billingPortal as any)(...args);
-  }
-  return noOpAsync();
-};
+export const redeemReferralCode = autumnApi?.redeemReferralCode
+  ? (autumnApi.redeemReferralCode as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const createReferralCode = async (...args: any[]) => {
-  if (autumnApi?.createReferralCode) {
-    return await (autumnApi.createReferralCode as any)(...args);
-  }
-  return noOpAsync();
-};
+export const createEntity = autumnApi?.createEntity
+  ? (autumnApi.createEntity as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 
-export const redeemReferralCode = async (...args: any[]) => {
-  if (autumnApi?.redeemReferralCode) {
-    return await (autumnApi.redeemReferralCode as any)(...args);
-  }
-  return noOpAsync();
-};
-
-export const createEntity = async (...args: any[]) => {
-  if (autumnApi?.createEntity) {
-    return await (autumnApi.createEntity as any)(...args);
-  }
-  return noOpAsync();
-};
-
-export const getEntity = async (...args: any[]) => {
-  if (autumnApi?.getEntity) {
-    return await (autumnApi.getEntity as any)(...args);
-  }
-  return noOpAsync();
-};
+export const getEntity = autumnApi?.getEntity
+  ? (autumnApi.getEntity as any)
+  : action(async (_ctx: ActionCtx, ..._args: any[]) => ({}));
 

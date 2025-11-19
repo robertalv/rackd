@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { NavigationButton } from "../navigation-button";
 import { toPng } from "html-to-image";
-import jsPDF from "jspdf";
 
 // Import icons - using common hugeicons names
 // Note: Adjust icon names if they don't match exactly in hugeicons
@@ -127,6 +126,9 @@ export function BracketControls({ bracketContainerRef, tournamentName = "Tournam
     if (!bracketContainerRef.current) return;
 
     try {
+      // Dynamically import jsPDF only when needed (client-side only)
+      const { default: jsPDF } = await import("jspdf");
+
       // Find the bracket content element
       const bracketContent = bracketContainerRef.current.querySelector('[data-bracket-content]') as HTMLElement;
       const targetElement = bracketContent || bracketContainerRef.current;

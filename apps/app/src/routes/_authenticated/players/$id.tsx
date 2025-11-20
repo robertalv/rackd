@@ -96,7 +96,11 @@ function PlayerDetailPage() {
   const [tournamentRole, setTournamentRole] = useState<"organizer" | "manager" | "player">("player");
   const [isFollowing, setIsFollowing] = useState(false);
 
-  const player = useQuery(api.players.getByIdOrUserId, { id: id as Id<"players"> | Id<"users"> });
+  // Only query if id is valid and not "undefined"
+  const player = useQuery(
+    api.players.getByIdOrUserId, 
+    id && id !== "undefined" ? { id: id as Id<"players"> | Id<"users"> } : "skip"
+  );
   
   const resolvedPlayerId = useMemo((): Id<"players"> | undefined => {
     if (!player || !player._id) return undefined;

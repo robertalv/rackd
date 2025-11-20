@@ -7,6 +7,7 @@ import { Card, CardContent } from "@rackd/ui/components/card";
 import { Button } from "@rackd/ui/components/button";
 import { Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { PlayerCard } from "./player-card";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface DiscoverPlayersGridProps {
   searchQuery: string;
@@ -26,6 +27,7 @@ interface DiscoverPlayersGridProps {
 export function DiscoverPlayersGrid({ searchQuery, filters, limit = 50 }: DiscoverPlayersGridProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const { user: currentUser } = useCurrentUser();
 
   // Parse Fargo rating filter
   const fargoRatingFilters = {
@@ -60,7 +62,13 @@ export function DiscoverPlayersGrid({ searchQuery, filters, limit = 50 }: Discov
     );
   }
 
-  if (!playersData || playersData.length === 0) {
+  // Filter out current user from the players list
+  const filteredPlayers = playersData?.filter((player: any) => {
+    if (!currentUser?._id) return true;
+    return player._id !== currentUser._id;
+  }) || [];
+
+  if (filteredPlayers.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -78,8 +86,6 @@ export function DiscoverPlayersGrid({ searchQuery, filters, limit = 50 }: Discov
       </Card>
     );
   }
-
-  const filteredPlayers = playersData;
   const totalPages = Math.ceil(filteredPlayers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;

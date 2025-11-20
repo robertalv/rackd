@@ -6,6 +6,7 @@ import { Button } from "@rackd/ui/components/button";
 import { Badge } from "@rackd/ui/components/badge";
 import { MapPin, Trophy } from "lucide-react";
 import { ProfileAvatar } from "../profile-avatar";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface PlayerCardProps {
   player: {
@@ -39,8 +40,10 @@ const getCategoryFromRating = (rating?: number): { label: string; className: str
 };
 
 export function PlayerCard({ player }: PlayerCardProps) {
+  const { user: currentUser } = useCurrentUser();
   const category = getCategoryFromRating(player.fargoRating);
   const location = [player.city, player.country].filter(Boolean).join(", ") || "Unknown";
+  const isCurrentUser = currentUser?._id === player._id;
 
   return (
     <Link 
@@ -55,7 +58,7 @@ export function PlayerCard({ player }: PlayerCardProps) {
             <ProfileAvatar
               user={{
                 displayName: player.name,
-                image: player.userImageUrl || player.avatarUrl,
+                image: isCurrentUser ? undefined : (player.userImageUrl || player.avatarUrl),
                 country: player.country,
               }}
               size="lg"
@@ -72,7 +75,7 @@ export function PlayerCard({ player }: PlayerCardProps) {
                 <Badge variant="secondary" className="text-xs px-1.5 py-0">✓</Badge>
               )}
             </div>
-            {player.username && player.username.trim() && (
+            {!isCurrentUser && player.username && player.username.trim() && (
               <p className="text-sm text-muted-foreground">@{player.username}</p>
             )}
           </div>

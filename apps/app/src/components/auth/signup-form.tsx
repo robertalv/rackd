@@ -5,7 +5,7 @@ import { Button } from "@rackd/ui/components/button";
 import { Input } from "@rackd/ui/components/input";
 import { Checkbox } from "@rackd/ui/components/checkbox";
 import { cn } from "@rackd/ui/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -15,8 +15,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@rackd/backend/convex/_generated/api";
 import { LogoIcon } from "@/components/logo";
 import { Icon, Mail01Icon } from "@rackd/ui/icons";
-import { useTurnstile } from "@rackd/cloudflare/client/turnstile";
-import { verifyTurnstileToken } from "@/lib/functions/verify-turnstile";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -43,19 +41,6 @@ export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const syncUserToCustomTable = useMutation(api.auth.syncUserToCustomTable);
-  const createPlayerProfile = useMutation(api.auth.createPlayerProfile);
-  
-  // Only use Turnstile in production
-  const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD;
-  const turnstileSiteKey = isProduction ? import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY : undefined;
-  const { token: turnstileToken, containerRef: turnstileContainerRef, reset: resetTurnstile, isLoading: turnstileLoading } = useTurnstile({
-    siteKey: turnstileSiteKey || "",
-    theme: "auto",
-    size: "normal",
-    onError: (error) => {
-      console.error("Turnstile error:", error);
-    },
-  });
 
   const {
     register,
@@ -73,6 +58,10 @@ export function SignupForm() {
 
   const termsAccepted = watch("terms");
   const username = watch("username");
+  
+  // Track previous username to detect changes
+  const prevUsernameRef = useRef<string>("");
+  const prevAvailabilityRef = useRef<boolean | undefined>(undefined);
 
   // Check username availability in real-time
   const isUsernameAvailable = useQuery(
@@ -84,57 +73,46 @@ export function SignupForm() {
 
   // Validate username availability
   useEffect(() => {
-    if (username && username.length >= 3 && /^[a-z0-9-_]+$/.test(username)) {
+    // Only process if username or availability changed
+    const usernameChanged = prevUsernameRef.current !== username;
+    const availabilityChanged = prevAvailabilityRef.current !== isUsernameAvailable;
+    
+    if (!usernameChanged && !availabilityChanged) {
+      return; // No changes, skip processing
+    }
+    
+    // Update refs
+    prevUsernameRef.current = username || "";
+    prevAvailabilityRef.current = isUsernameAvailable;
+    
+    // Only run if username is valid format and we have availability result
+    if (username && username.length >= 3 && /^[a-z0-9-_]+$/.test(username) && isUsernameAvailable !== undefined) {
       if (isUsernameAvailable === false) {
         setError("username", {
           type: "manual",
           message: "Username is already taken",
         });
-      } else if (isUsernameAvailable === true && errors.username?.type === "manual") {
+      } else if (isUsernameAvailable === true) {
         // Clear the error if username becomes available
+        const currentError = errors.username;
+        if (currentError?.type === "manual" && currentError.message === "Username is already taken") {
+          setError("username", { type: "manual", message: "" });
+        }
+      }
+    } else if (username && username.length < 3) {
+      // Clear manual errors when username becomes too short
+      const currentError = errors.username;
+      if (currentError?.type === "manual" && currentError.message === "Username is already taken") {
         setError("username", { type: "manual", message: "" });
       }
     }
-  }, [username, isUsernameAvailable, setError, errors.username]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username, isUsernameAvailable]); // Intentionally omit errors.username and setError to prevent infinite loop
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
 
     try {
-      // Verify Turnstile token if in production and site key is configured
-      if (isProduction && turnstileSiteKey) {
-        if (!turnstileToken) {
-          setError("root", {
-            message: "Please complete the security verification.",
-          });
-          toast.error("Security verification required", {
-            description: "Please complete the security check below.",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Verify the token on the server
-        const verification = await (verifyTurnstileToken as any)({ token: turnstileToken }) as {
-          success: boolean;
-          verified?: boolean;
-          error?: string;
-          hostname?: string;
-        };
-        
-        if (!verification.success || !verification.verified) {
-          setError("root", {
-            message: verification.error || "Security verification failed. Please try again.",
-          });
-          toast.error("Verification failed", {
-            description: verification.error || "Please complete the security check again.",
-          });
-          resetTurnstile();
-          setIsLoading(false);
-          return;
-        }
-      }
-
       const result = await authClient.signUp.email({
         email: data.email,
         password: data.password,
@@ -154,7 +132,7 @@ export function SignupForm() {
           email: data.email,
           name: `${data.firstName} ${data.lastName}`,
           username: data.username.toLowerCase(),
-          betterAuthUserId,
+          ...(betterAuthUserId ? { betterAuthUserId } : {}),
         });
       } catch (err: any) {
         console.warn("Failed to sync user to custom table:", err);
@@ -171,23 +149,12 @@ export function SignupForm() {
       }
 
 
-      // Create player profile immediately
-      try {
-        const player = await createPlayerProfile();
-      } catch (err: any) {
-        // Player profile creation is idempotent, so errors are non-critical
-        console.warn("Failed to create player profile (may already exist):", err);
-        // Don't fail the signup if player profile creation fails
-      }
+      // Player profile will be created automatically by the onCreate hook
+      // We don't need to call createPlayerProfile() here as the hook handles it
 
       toast.success("Account created!", {
         description: "You have successfully signed up.",
       });
-
-      // Reset Turnstile after successful signup (if used)
-      if (isProduction && turnstileSiteKey) {
-        resetTurnstile();
-      }
 
       // Redirect to home page after successful signup
       navigate({ to: "/", search: { postId: undefined } })
@@ -346,7 +313,7 @@ export function SignupForm() {
                   {/* Show the checkbox if username is valid and available */}
                   {username && username.length >= 3 && /^[a-z0-9-_]+$/.test(username) && isUsernameAvailable ? (
                     <Checkbox 
-                      checked
+                      checked={true}
                       tabIndex={-1}
                       className="pointer-events-auto cursor-default scale-90"
                       aria-label="Username available"
@@ -433,8 +400,8 @@ export function SignupForm() {
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="terms"
-                checked={termsAccepted}
-                onCheckedChange={(checked) => setValue("terms", checked as boolean)}
+                checked={termsAccepted ?? false}
+                onCheckedChange={(checked) => setValue("terms", checked === true)}
               />
               <label
                 htmlFor="terms"
@@ -462,18 +429,11 @@ export function SignupForm() {
               )}
             </div>
 
-            {/* Turnstile widget - floating bottom right (production only) */}
-            {isProduction && turnstileSiteKey && (
-              <div className="fixed bottom-4 right-4 z-50">
-                <div ref={turnstileContainerRef} />
-              </div>
-            )}
-
             <Button 
               type="submit"
               size="lg"
               variant="auth"
-              disabled={isLoading || (isProduction && turnstileSiteKey && (!turnstileToken || turnstileLoading))}
+              disabled={isLoading}
               className="w-full"
             >
               <Icon icon={Mail01Icon} className="h-4 w-4" />

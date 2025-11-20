@@ -8,7 +8,7 @@ import viteReact from "@vitejs/plugin-react";
 export default defineConfig({
 	plugins: [tsconfigPaths(), tanstackStart(), tailwindcss(), viteReact(), netlify()],
 	ssr: {
-		noExternal: ["@hugeicons/react"],
+		noExternal: ["@hugeicons/react", "@hugeicons/core-free-icons"],
 		external: ["jspdf", "html-to-image"],
 	},
 	optimizeDeps: {

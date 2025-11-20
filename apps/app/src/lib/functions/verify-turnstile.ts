@@ -1,52 +1,165 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 
 /**
  * Verify Turnstile token on the server
  * This should be called before authentication to prevent bot signups/logins
  */
 export const verifyTurnstileToken = createServerFn({ method: "POST" })
-	.handler(async (args: any) => {
-		console.log('Turnstile verification - received args:', args);
-		console.log('Turnstile verification - args type:', typeof args);
-		
-		// Try to get data from different possible locations
-		const data = args?.data ?? args;
-		console.log('Turnstile verification - extracted data:', data);
-		console.log('Turnstile verification - data type:', typeof data);
-		console.log('Turnstile verification - data keys:', data && typeof data === 'object' ? Object.keys(data) : 'N/A');
-		
-		// Extract token - data should be { token: string } when called from client
+	.handler(async (handlerArgs: any) => {
+		// TanStack Start passes handler with { data, request, ... } structure
+		// Try to destructure data, but also have access to full handlerArgs for fallback
+		const data = handlerArgs?.data ?? (handlerArgs as any)?.data;
 		let token: string | null = null;
 		
-		if (data && typeof data === 'object' && !Array.isArray(data)) {
-			// Check if data has token property
-			if ('token' in data) {
-				token = (data as { token: unknown }).token as string | null;
-			}
+		// Log what we receive for debugging - check all possible locations
+		console.log('Turnstile verification - received handlerArgs:', {
+			hasHandlerArgs: !!handlerArgs,
+			hasData: !!data,
+			dataType: typeof data,
+			dataValue: data,
+			dataKeys: data && typeof data === 'object' ? Object.keys(data) : 'N/A',
+			handlerArgsKeys: handlerArgs && typeof handlerArgs === 'object' ? Object.keys(handlerArgs).filter(k => !k.startsWith('Symbol')) : 'N/A',
+			hasContext: !!handlerArgs?.context,
+			contextKeys: handlerArgs?.context && typeof handlerArgs.context === 'object' ? Object.keys(handlerArgs.context) : 'N/A',
+			hasSendContext: !!handlerArgs?.sendContext,
+			sendContextKeys: handlerArgs?.sendContext && typeof handlerArgs.sendContext === 'object' ? Object.keys(handlerArgs.sendContext) : 'N/A',
+			requestUrl: handlerArgs?.request?.url,
+			requestHeaders: handlerArgs?.request?.headers ? Object.fromEntries(handlerArgs.request.headers.entries()) : 'N/A',
+		});
+		
+		// Extract token from data
+		if (data?.token) {
+			token = data.token;
+		} else if (data && typeof data === 'object' && 'token' in data) {
+			token = (data as any).token;
 		} else if (typeof data === 'string') {
 			token = data;
 		}
+		
+		// Check context and sendContext for data (Netlify fallback)
+		if (!token && handlerArgs?.context && typeof handlerArgs.context === 'object') {
+			if ('token' in handlerArgs.context) {
+				token = (handlerArgs.context as any).token;
+			} else if ('data' in handlerArgs.context && handlerArgs.context.data?.token) {
+				token = handlerArgs.context.data.token;
+			}
+		}
+		
+		if (!token && handlerArgs?.sendContext && typeof handlerArgs.sendContext === 'object') {
+			if ('token' in handlerArgs.sendContext) {
+				token = (handlerArgs.sendContext as any).token;
+			} else if ('data' in handlerArgs.sendContext && handlerArgs.sendContext.data?.token) {
+				token = handlerArgs.sendContext.data.token;
+			}
+		}
+		
+		// On Netlify, if data is undefined, try reading from request body (fallback)
+		if (!token && handlerArgs?.request) {
+			try {
+				const request = handlerArgs.request;
+				const contentLength = request.headers.get('content-length');
+				
+				console.log('Attempting to read from args.request body', {
+					hasRequest: !!request,
+					contentLength: contentLength,
+					method: request.method,
+					url: request.url,
+				});
+				
+				// Only try to read body if content-length is > 0
+				if (contentLength && parseInt(contentLength) > 0) {
+					// Clone the request to avoid consuming it
+					const clonedRequest = request.clone();
+					const contentType = clonedRequest.headers.get('content-type') || '';
+					
+					console.log('Request content-type:', contentType);
+					
+					if (contentType.includes('application/json')) {
+						const body = await clonedRequest.json();
+						console.log('Parsed JSON body:', { hasBody: !!body, bodyKeys: body && typeof body === 'object' ? Object.keys(body) : 'N/A' });
+						
+						if (body?.token) {
+							token = body.token;
+						} else if (body?.data?.token) {
+							token = body.data.token;
+						}
+					} else {
+						// Try parsing as text and then JSON
+						const text = await clonedRequest.text();
+						console.log('Request body text length:', text?.length || 0);
+						
+						if (text) {
+							try {
+								const body = JSON.parse(text);
+								console.log('Parsed text body:', { hasBody: !!body, bodyKeys: body && typeof body === 'object' ? Object.keys(body) : 'N/A' });
+								
+								if (body?.token) {
+									token = body.token;
+								} else if (body?.data?.token) {
+									token = body.data.token;
+								}
+							} catch (parseErr) {
+								console.warn('Could not parse request body as JSON:', parseErr);
+							}
+						}
+					}
+				} else {
+					console.log('Request body is empty (content-length: 0), data must be passed differently on Netlify');
+					// On Netlify with TanStack Start, the body is consumed by the framework
+					// The data should be in args.data, but it's undefined, which suggests
+					// a serialization issue or the handler signature needs to match Netlify's expectations
+				}
+			} catch (err) {
+				console.error('Error reading from args.request body:', err);
+			}
+		}
+		
+		// Last resort: Try getRequest() (works on localhost)
+		if (!token) {
+			try {
+				const request = getRequest();
+				if (request && request.bodyUsed === false) {
+					console.log('Trying getRequest() as last resort');
+					const clonedRequest = request.clone();
+					const text = await clonedRequest.text();
+					if (text) {
+						try {
+							const body = JSON.parse(text);
+							if (body?.token) {
+								token = body.token;
+							} else if (body?.data?.token) {
+								token = body.data.token;
+							}
+						} catch (parseErr) {
+							console.warn('Could not parse getRequest() body:', parseErr);
+						}
+					}
+				}
+			} catch (err) {
+				// Ignore - this is expected on Netlify
+			}
+		}
 
-		console.log('Turnstile verification - extracted token:', token ? `${token.substring(0, 20)}...` : 'null');
-
+		// Final validation
 		if (!token || typeof token !== 'string' || token.trim().length === 0) {
-			const errorDetails = {
-				args,
-				data,
+			console.error('Turnstile verification failed: Token missing or invalid', {
+				receivedData: data,
 				dataType: typeof data,
-				dataIsNull: data === null,
-				dataIsUndefined: data === undefined,
 				dataKeys: data && typeof data === 'object' ? Object.keys(data) : 'N/A',
 				tokenValue: token,
 				tokenType: typeof token,
-				tokenLength: token ? token.length : 0
-			};
-			console.error('Turnstile verification failed: Token missing or invalid', errorDetails);
+			});
 			return { success: false, error: 'Token is required' };
 		}
 
 		try {
-			const secretKey = process.env.VITE_CLOUDFLARE_TURNSTILE_SECRET_KEY || import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SECRET_KEY;
+			// Try multiple ways to get the secret key (Netlify uses process.env, Vite uses import.meta.env)
+			const secretKey = 
+				process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY ||
+				process.env.VITE_CLOUDFLARE_TURNSTILE_SECRET_KEY ||
+				import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SECRET_KEY ||
+				import.meta.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
 			
 			if (!secretKey) {
 				// In development, allow requests if Turnstile is not configured

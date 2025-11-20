@@ -608,13 +608,18 @@ export const syncUserToCustomTable = mutation({
 			
 			if (betterAuthUser) {
 				authUser = betterAuthUser as any;
-			} else if (args.betterAuthUserId) {
-				// Try to get by ID if provided
+		} else if (args.betterAuthUserId && args.betterAuthUserId !== "undefined") {
+			// Try to get by ID if provided (only if it's a valid string, not "undefined")
+			try {
 				const userById = await ctx.db.get(args.betterAuthUserId as unknown as Id<"users">);
 				if (userById) {
 					authUser = userById as any;
 				}
+			} catch (err) {
+				// Invalid ID format, ignore and continue
+				console.warn("[syncUserToCustomTable] Invalid betterAuthUserId format:", args.betterAuthUserId);
 			}
+		}
 		}
 
 		if (!authUser && !args.email) {
@@ -624,7 +629,9 @@ export const syncUserToCustomTable = mutation({
 		const now = Date.now();
 		const userEmail = authUser?.email || args.email!;
 		const userName = authUser?.name || args.name!;
-		const betterAuthId = authUser?._id ? (authUser._id as unknown as string) : args.betterAuthUserId;
+		const betterAuthId = authUser?._id 
+			? (authUser._id as unknown as string) 
+			: (args.betterAuthUserId && args.betterAuthUserId !== "undefined" ? args.betterAuthUserId : undefined);
 		const username = args.username || (authUser as any)?.username || userEmail?.split("@")[0] || "user";
 
 		// Validate username if provided
@@ -677,7 +684,7 @@ export const syncUserToCustomTable = mutation({
 				banReason: undefined,
 				banExpires: undefined,
 				interests: undefined,
-				playerId: undefined,
+				playerId: undefined, // Will be set after player creation
 				followerCount: 0,
 				followingCount: 0,
 				postCount: 0,
@@ -686,7 +693,80 @@ export const syncUserToCustomTable = mutation({
 				lastActive: now,
 			});
 			user = await ctx.db.get(userId);
+			if (!user) {
+				throw new Error("Failed to retrieve created user");
+			}
 			console.log("[syncUserToCustomTable] User created in custom users table:", userId);
+			
+			// Create player profile for the new user
+			if (!user.playerId) {
+				// Check if player already exists for this user
+				const existingPlayer = await ctx.db
+					.query("players")
+					.withIndex("by_user", (q) => q.eq("userId", user?._id as unknown as Id<"users">))
+					.first();
+				
+				if (!existingPlayer) {
+					// Create player profile
+					const playerId = await ctx.db.insert("players", {
+						name: user.name || user.email?.split("@")[0] || "Player",
+						userId: user._id,
+						bio: null,
+						avatarUrl: user.image ?? null,
+						city: null,
+						homeRoom: null,
+						homeVenue: null,
+						isVerified: false,
+						updatedAt: now,
+						fargoId: null,
+						fargoReadableId: null,
+						fargoMembershipId: null,
+						fargoRating: null,
+						fargoRobustness: null,
+						league: null,
+						apaId: null,
+						apaSkillLevel: null,
+						bcaId: null,
+					});
+					
+					// Link player to user
+					await ctx.db.patch(user._id, {
+						playerId: playerId,
+						updatedAt: now,
+					});
+					
+					// Create initial player stats
+					const existingStats = await ctx.db
+						.query("playerStats")
+						.withIndex("by_player", (q) => q.eq("playerId", playerId))
+						.first();
+					
+					if (!existingStats) {
+						await ctx.db.insert("playerStats", {
+							playerId: playerId,
+							totalMatches: 0,
+							wins: 0,
+							losses: 0,
+							tournamentsPlayed: 0,
+							tournamentsWon: 0,
+							averageScore: 0,
+							lastUpdated: now,
+						});
+					}
+					
+					console.log("[syncUserToCustomTable] Player profile created for user:", userId);
+					// Refresh user to get updated playerId
+					user = await ctx.db.get(userId);
+				} else {
+					// Link existing player to user
+					await ctx.db.patch(user._id, {
+						playerId: existingPlayer._id,
+						updatedAt: now,
+					});
+					console.log("[syncUserToCustomTable] Linked existing player to user:", userId);
+					user = await ctx.db.get(userId);
+				}
+			}
 		} else {
 			// Update existing user
 			const updates: {
@@ -707,6 +787,80 @@ export const syncUserToCustomTable = mutation({
 
 			await ctx.db.patch(user._id, updates);
 			console.log("[syncUserToCustomTable] User already exists, updated betterAuthId and/or username");
+			
+			// Ensure player profile exists for existing user
+			if (user && !user.playerId) {
+				// Check if player already exists for this user (user is not null here due to check above)
+				const userId = user._id;
+				const userName = user.name;
+				const userEmail = user.email;
+				const userImage = user.image;
+				const existingPlayer = await ctx.db
+					.query("players")
+					.withIndex("by_user", (q) => q.eq("userId", userId))
+					.first();
+				
+				if (!existingPlayer) {
+					// Create player profile
+					const playerId = await ctx.db.insert("players", {
+						name: userName || userEmail?.split("@")[0] || "Player",
+						userId: userId,
+						bio: null,
+						avatarUrl: userImage ?? null,
+						city: null,
+						homeRoom: null,
+						homeVenue: null,
+						isVerified: false,
+						updatedAt: now,
+						fargoId: null,
+						fargoReadableId: null,
+						fargoMembershipId: null,
+						fargoRating: null,
+						fargoRobustness: null,
+						league: null,
+						apaId: null,
+						apaSkillLevel: null,
+						bcaId: null,
+					});
+					
+					// Link player to user
+					await ctx.db.patch(userId, {
+						playerId: playerId,
+						updatedAt: now,
+					});
+					
+					// Create initial player stats
+					const existingStats = await ctx.db
+						.query("playerStats")
+						.withIndex("by_player", (q) => q.eq("playerId", playerId))
+						.first();
+					
+					if (!existingStats) {
+						await ctx.db.insert("playerStats", {
+							playerId: playerId,
+							totalMatches: 0,
+							wins: 0,
+							losses: 0,
+							tournamentsPlayed: 0,
+							tournamentsWon: 0,
+							averageScore: 0,
+							lastUpdated: now,
+						});
+					}
+					
+					console.log("[syncUserToCustomTable] Player profile created for existing user:", userId);
+					// Refresh user to get updated playerId
+					user = await ctx.db.get(userId);
+				} else {
+					// Link existing player to user
+					await ctx.db.patch(userId, {
+						playerId: existingPlayer._id,
+						updatedAt: now,
+					});
+					console.log("[syncUserToCustomTable] Linked existing player to user:", userId);
+					user = await ctx.db.get(userId);
+				}
+			}
 		}
 
 		return user;
